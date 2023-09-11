@@ -21,9 +21,9 @@
 
 ## Flashing the code
 
- **REMARK**: Arduino mega pro mini (used on testing) uses the CH340G CI, so it is necessary to install the [driver](https:www.blogdarobotica.com/downloads/H341SER_DRIVER_CASA_DA_ROBOTICA_BLOG_DA_ROBOTICA.EXE).
+ **REMARK**: Arduino mega pro mini (used on testing) uses the CH340G CI, so it is necessary to install the [driver](https://www.blogdarobotica.com/downloads/H341SER_DRIVER_CASA_DA_ROBOTICA_BLOG_DA_ROBOTICA.EXE).
  
- The Arduino IDE can be obtained [here](https:www.arduino.cc/en/software).
+ The Arduino IDE can be obtained [here](https://www.arduino.cc/en/software).
 
  Use a micro USB cable to connect to the Arduino and select the "Arduino Mega 2560" board in the IDE.
 
@@ -40,16 +40,16 @@
  ## Materials
 
  - 1 box (reused, wooden)
- - [1 arduino mega 2560 pro (mini)](https:produto.mercadolivre.com.br/MLB-2012119523-arduino-mega-pro-mini-lacrado-_JM)
- - [1 DS18B20 temperature sensor (waterproof)](https:produto.mercadolivre.com.br/MLB-1659212606-sensor-de-temperatura-ds18b20-prova-dagua-arduino-_JM)
- - [1 DHT11 temperature and humidity sensor](https:produto.mercadolivre.com.br/MLB-688214170-sensor-de-umidade-e-temperatura-dht11-com-pci-pic-arduino-_JM)
- - [1 BMP180 barometer](https:produto.mercadolivre.com.br/MLB-1335729819-barmetro-bmp180-sensor-de-presso-e-temperatura-arduino-_JM)
- - [1 pH sensor PH4502C](https:produto.mercadolivre.com.br/MLB-1894057619-modulo-sensor-de-ph-ph4502c-com-eletrodo-sonda-bnc-arduino-_JM)
+ - [1 arduino mega 2560 pro (mini)](https://produto.mercadolivre.com.br/MLB-2012119523-arduino-mega-pro-mini-lacrado-_JM)
+ - [1 DS18B20 temperature sensor (waterproof)](https://produto.mercadolivre.com.br/MLB-1659212606-sensor-de-temperatura-ds18b20-prova-dagua-arduino-_JM)
+ - [1 DHT11 temperature and humidity sensor](https://produto.mercadolivre.com.br/MLB-688214170-sensor-de-umidade-e-temperatura-dht11-com-pci-pic-arduino-_JM)
+ - [1 BMP180 barometer](https://produto.mercadolivre.com.br/MLB-1335729819-barmetro-bmp180-sensor-de-presso-e-temperatura-arduino-_JM)
+ - [1 pH sensor PH4502C](https://produto.mercadolivre.com.br/MLB-1894057619-modulo-sensor-de-ph-ph4502c-com-eletrodo-sonda-bnc-arduino-_JM)
  - [1 relay module with 8 channels (5 V)](https://produto.mercadolivre.com.br/MLB-1758954385-modulo-rele-rele-5v-8-canais-para-arduino-pic-raspberry-pi-_JM)
- - [2 float water level sensors and 2 x 220 olhm resistors](https:produto.mercadolivre.com.br/MLB-1540418150-sensor-de-nivel-de-agua-boia-para-arduino-esp8266-esp32-_JM)
+ - [2 float water level sensors and 2 x 220 olhm resistors](https://produto.mercadolivre.com.br/MLB-1540418150-sensor-de-nivel-de-agua-boia-para-arduino-esp8266-esp32-_JM)
  - 1 power source 8v 1A (any voltage between 6 V and 9 V)
  - 1 trimpot 10k
- - [6 tactile push button keys and 6 x 1k resistors](https:produto.mercadolivre.com.br/MLB-1858468268-kit-10x-chave-tactil-push-button-6x6x5mm-arduino-eletrnica-_JM)
+ - [6 tactile push button keys and 6 x 1k resistors](https://produto.mercadolivre.com.br/MLB-1858468268-kit-10x-chave-tactil-push-button-6x6x5mm-arduino-eletrnica-_JM)
  - [6 female recessed sockets](https://produto.mercadolivre.com.br/MLB-1844503844-6-tomada-embutir-fmea-preta-3-pinos-10a-painel-aparelho-_JM)
  - 1 led with
  - 1 power source 12v, 1 fan 12v (cooler), 1 water pump 12v (reposition pump)
