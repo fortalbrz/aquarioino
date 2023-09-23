@@ -15,7 +15,7 @@
  - feeding timer
  - water level:
     - automation of water replenishment by evaporation
-    - automation of the partial water change (PWC / TPA) routine
+    - automation of th[README.md](..%2Ffluxoino%2FREADME.md)e partial water change (PWC / TPA) routine
  - pH measurement
  - Weather Station
 
