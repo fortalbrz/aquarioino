@@ -2,11 +2,6 @@
 //
 // AQUARIO.INO - Aquarium Automation with Home Assistant
 //
-// TODO: 
-//  - programmagle timers
-//  - programmagle timers commands
-//  - eeprom
-//  - states with relays / timers
 //
 // Source code: https://github.com/fortalbrz/aquarioino
 // Making off: https://youtu.be/3CjU-o5LTEI (version 1.0)
@@ -89,10 +84,42 @@
 // - 1 power source 12v, 1 fan 12v (cooler), 1 water pump 12v (reposition pump)
 // - flexible cab
 // 
+//
 //   Circuit Wiring Instruction (step by step):
 //   -  https://www.circuito.io/static/reply/index.html?solutionId=65010bbd91d445002e8974a5&solutionPath=storage.circuito.io
 // 
 //  
+//
+//
+// 
+// Water level sensors position:
+//
+//                                [water input]
+//   |                       |     |                                                |     ------------------------|   |
+//   | -- [water level 1]    |     |      |                                         |     |                           |
+//   |                       |     |      |         |                               |     |          water            |
+//   |        [fish]         |     |      |         |                               |     |        reposition         |
+//   |                       |     |      | filters | -- [water level 2]            |     |        reservatory        |
+//   |                       |     |      |   ...   |                               |     |                           |
+//   | [drain pump]=>waste   |     |      |         |        [sump pump]=> aquarium |     | ["water reposition" pump] |=> aquarium
+//   -------------------------     --------------------------------------------------     -----------------------------    
+//       T A N K / Aquarium                            S U M P                                adds water to aquarium
+//
+//  [water level 1] - "drain pump" water level sensor: detects that the aquarium water level is low 
+//                    (activates the "water reposition" pump)
+//  [water level 2] - "sump pump" water level sensor: protects the sump pump
+//  [sump pump]     - pushes water from sump back to aquarium (as usual)
+//  [drain pump]    - (cheap/low flow pump) removes dirt water from aquarium into waste/sink 
+//                    (used on first step of the automated partial water change / PWC routine)
+//  ["water reposition" pump] - (cheap/low flow pump) pushes water from an external water reservatory 
+//                              (with conditionated water) into aquarium (compensates evaporation losses
+//                              and second step of automated partial water change / PWC routine)
+//
+//
+// TODO: 
+//  - check feeder lock logic
+//  - feeder with step motor
+//  - testing
 //
 // 2023 - Jorge Albuquerque (jorgealbuquerque@gmail.com)
 //
@@ -109,24 +136,26 @@
 //
 // Configuration flags (enables or disables features in order to "skip" unwanted hardware)
 //
-#define USE_LCD_DISPLAY true                   // enables/disables LCD display (disable it to not use the LCD display)
-#define USE_HOME_ASSISTANT true                // enables/disables home assistant integration (disable it to not use the LAN ethernet module)
-#define USE_PUSH_BUTTONS true                  // enables/disables push buttons (disable it to not use the push buttons)
-#define USE_WATER_TEMPERATURE_SENSOR true      // enables/disables water temperature sensor (disable it to not use the DS18B20 temperature sensor)
-#define USE_WATER_PH_SENSOR true               // enables/disables water pH sensor (disable it to not use the Ph4502c sensor)
-#define USE_AIR_TEMPERATURE_SENSOR true        // enables/disables air temperature and humidity sensor (disable it to not use the DHT11 sensor)
-#define USE_AIR_PRESSURE_SENSOR true           // enables/disables air pressure sensor (disable it to not use the BMP085 sensor)
-#define USE_WATER_LEVEL_SENSORS true           // enables/disables water level sensors (disable it to not use the water level sensors)
-#define USE_RELAYS true                        // enables/disables relays (disable it to not use the relay module)
-#define USE_RTC_CLOCK true                     // enables/disables clock (disable it to not use the RTC module)
-#define USE_STANDALONE_TIMERS true             // enables/disables timers
-#define USE_EEPROM false                       // enables/disables EEPROM 
-#define ENABLE_LIGHTS_TIMER true               // enables/disables lights timers
-#define ENABLE_UV_FILTER_TIMER true            // enables/disables UV filter timers
-#define ENABLE_FEEDING_TIMER true              // enables/disables feeding timers
-#define ENABLE_SENSOR_ALARMS true              // enables/disables sensor alarming
-#define ENABLE_WEATHER_STATION true            // enables/disables standalone weather station (requires air pressure sensor BMP085)
-#define MAX_NUMBER_OF_TIMERS 10
+#define USE_LCD_DISPLAY true                       // enables/disables LCD display (disable it to not use the LCD display)
+#define USE_HOME_ASSISTANT true                    // enables/disables home assistant integration (disable it to not use the LAN ethernet module)
+#define USE_WATER_PH_SENSOR true                   // enables/disables water pH sensor (disable it to not use the Ph4502c sensor)
+#define USE_WATER_TEMPERATURE_SENSOR true          // enables/disables water temperature sensor (disable it to not use the DS18B20 temperature sensor)
+#define USE_AIR_TEMPERATURE_SENSOR true            // enables/disables air temperature and humidity sensor (disable it to not use the DHT11 sensor)
+#define USE_AIR_PRESSURE_SENSOR true               // enables/disables air pressure sensor (disable it to not use the BMP085 sensor)
+#define USE_WATER_LEVEL_SENSORS true               // enables/disables water level sensors (disable it to not use the water level sensors)
+#define USE_RTC_CLOCK true                         // enables/disables clock (disable it to not use the RTC module)
+#define USE_RELAYS true                            // enables/disables relays (disable it to not use the relay module)
+#define USE_PUSH_BUTTONS true                      // enables/disables push buttons (disable it to not use the push buttons)
+#define USE_STANDALONE_TIMERS true                 // enables/disables timers
+#define USE_EEPROM false                           // enables/disables EEPROM 
+#define ENABLE_LIGHTS_TIMER true                   // enables/disables lights timers
+#define ENABLE_UV_FILTER_TIMER true                // enables/disables UV filter timers
+#define ENABLE_FEEDING_TIMER true                  // enables/disables feeding timers
+#define ENABLE_SENSOR_ALARMS true                  // enables/disables sensor alarming
+#define ENABLE_WEATHER_STATION true                // enables/disables standalone weather station (requires air pressure sensor BMP085)
+#define MAX_NUMBER_OF_TIMERS 50                    // maximum number of programable timers (default: 50)
+#define LAMBDA_EWMA 0.95                           // exponential weighted mean average lambda
+#define FEEDING_AS_PUSH_BUTTON true                // true for feeding using a external feeder push button or false for use a step motor as feeder (see docs)
 //
 // MQTT configuration
 //
@@ -134,20 +163,16 @@
 #define MQTT_BROKER_PORT 1883                      // MQTT broker port
 #define MQTT_USERNAME  "mqtt-user"                 // can be omitted if not needed
 #define MQTT_PASSWORD  "mqtt"                      // can be omitted if not needed
-#define MQTT_DISCOVERY_TOPIC "homeassistant"
-#define MQTT_STATES_TOPIC "aquarioino/state"
-#define MQTT_COMMAND_TOPIC "aquarioino/cmd"
-#define MQTT_TIME_SYNC_TOPIC "ha/datetime"
-#define MQTT_AVAILABILITY_TIME 60000
-#define LAMBDA_EWMA 0.95                       // exponential weighted mean average lambda
+#define MQTT_DISCOVERY_TOPIC "homeassistant"       // MQTT discovery topic prefix 
+#define MQTT_STATES_TOPIC "aquarioino/state"       // MQTT state topic prefix 
+#define MQTT_COMMAND_TOPIC "aquarioino/cmd"        // MQTT topic for custom text commands
+#define MQTT_TIME_SYNC_TOPIC "ha/datetime"         // [optional] home assistant MQTT topic that broadcast current date/time (see the docs)
+#define MQTT_AVAILABILITY_TIME 60000               // time to send MQTT availability (default: 1 min)
 //
 // debug & testing flags
 //
-#define DEBUG_MODE true               // enable/disables serial debugging messages
-//#define _debugNoTimers false          // disable timers
-#define _debugNoRelay false           // disable relay
-#define _debugNoWaterLevel false      // disable water level
-// debug routines
+#define DEBUG_MODE true                            // enable/disables serial debugging messages
+// testing routines: enable flags to test hardware / wiring 
 #define DEBUG_LCD_ROUTINE false                    // test routine for LCD display (shows test message)
 #define DEBUG_RTC_ROUTINE false                    // test routine for RTC (shows curent time)
 #define DEBUG_RELAY_ROUTINE false                  // test routine for Relay (activate relay channels in sequence)
@@ -155,40 +180,39 @@
 #define DEBUG_WATER_LEVEL_SENSORS_ROUTINE false    // test routine for water level sensors
 #define DEBUG_WATER_REPOSITION_PUMP_ROUTINE false  // test routine for repostion pump
 #define DEBUG_COOLER_FAN_ROUTINE false             // test routine for cooler fan
-#define ARDUINOHA_DEBUG DEBUG_MODE
 //
 //
 // pins definitions (Arduino Mega 2560 pro mini)
 //
-//
-#define LCD_PIN_RS 12                          // LCD pin 4   
-#define LCD_PIN_ENABLED 11                     // LCD pin 6   
-#define LCD_PIN_D4 5                           // LCD pin 11
-#define LCD_PIN_D5 4                           // LCD pin 12
-#define LCD_PIN_D6 3                           // LCD pin 13
-#define LCD_PIN_D7 2                           // LCD pin 14
-// relay
-#define RELAY_SIZE 8
-#define RELAY_HEATER_PIN 20                    // Relay heater
-#define RELAY_LIGHTS_PIN 19                    //
-#define RELAY_FILTER_UV_PIN 18                 //
-#define RELAY_SUMP_PUMP_PIN 17                 //
-#define RELAY_DRAIN_PUMP_PIN 16                //
-#define RELAY_EXTRA_PIN 15                     //
-#define RELAY_COOLER_FAN_PIN 14                //
-#define RELAY_WATER_REPOSITION_PUMP_PIN 13     //
+// LCD
+#define LCD_PIN_RS 12                              // LCD pin 4   
+#define LCD_PIN_ENABLED 11                         // LCD pin 6   
+#define LCD_PIN_D4 5                               // LCD pin 11
+#define LCD_PIN_D5 4                               // LCD pin 12
+#define LCD_PIN_D6 3                               // LCD pin 13
+#define LCD_PIN_D7 2                               // LCD pin 14
+// relays
+#define RELAY_SIZE 8                               // do not change: 8 channels relay recommended!
+#define RELAY_HEATER_PIN 20                        // relay heater (normally open, common on 110vac)
+#define RELAY_LIGHTS_PIN 19                        // relay lightening (normally open, common on 110vac)
+#define RELAY_FILTER_UV_PIN 18                     // relay filter UV (normally open, common on 110vac)
+#define RELAY_SUMP_PUMP_PIN 17                     // relay sump pump (normally open, common on 110vac)
+#define RELAY_DRAIN_PUMP_PIN 16                    // relay drain pump (normally open, common on 110vac)
+#define RELAY_WATER_REPOSITION_PUMP_PIN 13         // relay water reposition pump (normally open, common on 110vac)
+#define RELAY_COOLER_FAN_PIN 14                    // relay cooler fan (normally open, common on 5v/12vdc)
+#define RELAY_FEEDER_PIN 15                        // relay feeder (normally open, common on short circuit at my old boyu feeder "feed button")
 // water level sensors
-#define DRAIN_WATER_LOW_LEVEL_SENSOR_PIN 23    //
-#define SUMP_WATER_LOW_LEVEL_SENSOR_PIN 24     //
+#define DRAIN_WATER_LOW_LEVEL_SENSOR_PIN 23        // this water level sensor should be located at maximum aquarium level (see diagram above)
+#define SUMP_WATER_LOW_LEVEL_SENSOR_PIN 24         // this water level sensor should be located at minimum level of the sump pump (see diagram above)
 // LAN ethernet module
-#define ETHERNETMODULE_PIN_CS 10               // Ethernet ECN28J60 (CS)
-#define ETHERNETMODULE_PIN_INT 3               // Ethernet ECN28J60 (INT)
+#define ETHERNETMODULE_PIN_CS 10                   // Ethernet ECN28J60 (CS)
+#define ETHERNETMODULE_PIN_INT 3                   // Ethernet ECN28J60 (INT)
 // analog sensors
-#define WATER_TEMPERATURE_SENSOR_DS18B20_PIN 7 // sensor DS18B20 (analog)  
-#define AIR_TEMPERATURE_SENSOR_DHT11_PIN 8     // sensor DHT11   (analog)
-#define AIR_PRESSURE_SENSOR_BMP180_PIN_SDA 20  // sensor BMP180  (analog) - Arduino Mega 2560
-#define AIR_PRESSURE_SENSOR_BMP180_PIN_SCL 21  // sensor BMP180  (analog) - Arduino Mega 2560
-#define WATER_PH_SENSOR_PH450C_PIN 6           // sensor Ph4502c (analog)
+#define WATER_TEMPERATURE_SENSOR_DS18B20_PIN 7     // sensor DS18B20 (analog)  
+#define AIR_TEMPERATURE_SENSOR_DHT11_PIN 8         // sensor DHT11   (analog)
+#define AIR_PRESSURE_SENSOR_BMP180_PIN_SDA 20      // sensor BMP180  (analog) - Arduino Mega 2560
+#define AIR_PRESSURE_SENSOR_BMP180_PIN_SCL 21      // sensor BMP180  (analog) - Arduino Mega 2560
+#define WATER_PH_SENSOR_PH450C_PIN 6               // sensor Ph4502c (analog)
 // buttons and leds
 #define PUSH_BUTTON_TURN_OFF_PIN 25
 #define PUSH_BUTTON_RESTART_PIN 26
@@ -197,30 +221,7 @@
 #define PUSH_BUTTON_MANUAL_CLEANING_PIN 39
 #define PUSH_BUTTON_FEEDING_PIN 30 
 //
-// status codes (internal)
-//
-#define STATUS_CODE_SHOW_DATETIME 0
-#define STATUS_CODE_SHOW_WATER_TEMPERATURE_01 1
-#define STATUS_CODE_SHOW_WATER_TEMPERATURE_02 2
-#define STATUS_CODE_SHOW_WATER_TEMPERATURE_03 3
-#define STATUS_CODE_SHOW_WATER_PH 4
-#define STATUS_CODE_SHOW_AIR_TEMPERATURE_01 5
-#define STATUS_CODE_SHOW_AIR_TEMPERATURE_02 6
-#define STATUS_CODE_SHOW_WEATHER_FORECAST_LOCAL 7
-#define STATUS_CODE_SHOW_FLAGS 8
-#define STATUS_CODE_EXECUTION_WATER_PARTIAL_CHANGE_ROUTINE 10
-#define STATUS_CODE_MANUAL_CLEANING 11
-#define STATUS_CODE_TURNED_OFF 100
-#define WEATHER_CODE_NO_FORECAST 0
-#define WEATHER_CODE_GOOD 1
-#define WEATHER_CODE_DRY 2
-#define WEATHER_CODE_NO_CHANGES 3
-#define WEATHER_CODE_LIGHT_RAIN 4
-#define WEATHER_CODE_RAINING 5
-#define WEATHER_CODE_HEAVY_RAIN 6
-#define WEATHER_CODE_TUNDERSTORM 7 
-//
-// LCD text messages (MAX 16 characters)
+// LCD text messages (MAX 16 characters) - [pt-BR]
 //
 #define TEXT_CLOCK_NOT_FOUND F("Clock not found!")
 #define TEXT_GOOD_MORNING F("Bom dia!")
@@ -269,23 +270,86 @@
 #define TEXT_RELAY_SUMP_PUMP F("sump")
 #define TEXT_RELAY_REPOSITION_PUMP F("repo")
 #define TEXT_RELAY_DRAIN_PUMP F("drain")
-#define TEXT_RELAY_EXTRA F("extra")
+#define TEXT_RELAY_FEED F("feeed")
+#define TEXT_UNKNOW F("UNKNOW")
 //
 // EEPROM
 //
-#define EEPROM_FLAGS_ADDRESS 0
-#define EEPROM_FLAG_LIGHT_BIT 0
-#define EEPROM_FLAG_TIMERS_ENABLED_BIT 1
+#define EEPROM_START_ADDRESS 0
+#define EEPROM_FLAGS_ADDRESS 1
+#define EEPROM_FLAG_TIMERS_ENABLED_BIT 0
 #define EEPROM_ALARM_BOUNDS_ADDRESS 2
-#define EEPROM_PRESSURE_ADDRESS 10
+#define EEPROM_PRESSURE_ADDRESS (EEPROM_ALARM_BOUNDS_ADDRESS + 4 * sizeof(float))
+#define EEPROM_TIMERS_ADDRESS (EEPROM_ALARM_BOUNDS_ADDRESS + 5 * sizeof(float))
+#define EEPROM_START_CHECK 0x24
+//
+// status codes (internal)
+//
+#define STATUS_CODE_SHOW_DATETIME 0
+#define STATUS_CODE_SHOW_WATER_TEMPERATURE_01 1
+#define STATUS_CODE_SHOW_WATER_TEMPERATURE_02 2
+#define STATUS_CODE_SHOW_WATER_TEMPERATURE_03 3
+#define STATUS_CODE_SHOW_WATER_PH 4
+#define STATUS_CODE_SHOW_AIR_TEMPERATURE_01 5
+#define STATUS_CODE_SHOW_AIR_TEMPERATURE_02 6
+#define STATUS_CODE_SHOW_WEATHER_FORECAST_LOCAL 7
+#define STATUS_CODE_SHOW_FLAGS 8
+#define STATUS_CODE_EXECUTION_WATER_PARTIAL_CHANGE_ROUTINE 10
+#define STATUS_CODE_MANUAL_CLEANING 11
+#define STATUS_CODE_TURNED_OFF 12
+#define WEATHER_CODE_NO_FORECAST 0
+#define WEATHER_CODE_GOOD 1
+#define WEATHER_CODE_DRY 2
+#define WEATHER_CODE_NO_CHANGES 3
+#define WEATHER_CODE_LIGHT_RAIN 4
+#define WEATHER_CODE_RAINING 5
+#define WEATHER_CODE_HEAVY_RAIN 6
+#define WEATHER_CODE_TUNDERSTORM 7 
 //
 // reference states
 //
 #define STATUS_CYCLE_START STATUS_CODE_SHOW_DATETIME                         // Cycle start
 #define STATUS_CYCLE_END STATUS_CODE_SHOW_FLAGS                              // Cycle end
 #define STATUS_CYCLE_OFF STATUS_CODE_EXECUTION_WATER_PARTIAL_CHANGE_ROUTINE  // first non cycle state
-#define STATUS_INVALID 100
+#define STATUS_INVALID 100                                                   // invalid state
+#define ARDUINOHA_DEBUG DEBUG_MODE
 
+#define DEFAULT_ALARM_BOUND_TEMP_MAX 29.1
+#define DEFAULT_ALARM_BOUND_TEMP_MIN 26.0
+#define DEFAULT_ALARM_BOUND_PH_MAX 8.9
+#define DEFAULT_ALARM_BOUND_PH_MIN 7.5
+// timers start/end hours
+#define DEFAULT_TIMER_LIGHT_ON 6;
+#define DEFAULT_TIMER_LIGHT_OFF 23;
+#define DEFAULT_TIMER_UV_ON 8;
+#define DEFAULT_TIMER_UV_OFF 15;
+#define DEFAULT_TIMER_FEED_1 7;
+#define DEFAULT_TIMER_FEED_2 12;
+#define DEFAULT_TIMER_FEED_3 18;
+
+//
+// timer
+//
+struct timer{
+   bool enabled = false; 
+   bool active = false;       
+   byte relayIndex = 0x00;      // relay index: [0, RELAY_SIZE - 1]
+   byte turnOnHour = 0x00;      // hh [0 - 23]
+   byte turnOnMinute = 0x00;    // mm [0 - 59]
+   byte turnOffHour = 0x00;     // hh [0 - 23]
+   byte turnOffMinute = 0x00;   // mm [0 - 59]
+};
+//
+// measured value
+//
+struct measure {
+   float value = 0;
+   float average = 0;
+   float max = 0;
+   float min = 100000000000;
+};
+
+#define is_valid_timer(t) ((t.turnOnHour != t.turnOffHour || t.turnOnMinute != t.turnOffMinute))
 
 #if (USE_LCD_DISPLAY == true)
   //
@@ -377,35 +441,35 @@
   // Pin10 (GND) --> Gnd (Arduino Nano Pin29)
   EthernetClient client;
   //
-  // MQTT 
+  // MQTT strings labels
   //
   const char str_device_name[] = "aquarioino"; // MQTT device name
   const char str_device_version[] =  "1.0.0"; // MQTT device version
   const char str_device_manufacturer[] =  "Jorge"; // MQTT device manufacturer
   const char str_icon[] = "mdi:water"; // MQTT default cins
   const char str_unit_temperature[] = "C"; // MQTT temperature unit
-  const char str_state_sensor[] = "aquarioino_state_sensor";
-  const char str_weather_forecast_sensor[] = "aquarioino_weather_forecast_sensor";
-  const char str_water_temperature_sensor[] = "aquarioino_water_temperature_sensor";
-  const char str_water_ph_sensor[] = "aquarioino_water_ph_sensor";
-  const char str_air_temperature_sensor[] = "aquarioino_air_temperature_sensor";
-  const char str_air_humidity_sensor[] = "aquarioino_air_humidity_sensor";
-  const char str_air_pressure_sensor[] = "aquarioino_air_pressure_sensor";
-  const char str_light_switch[] = "aquarioino_lights";
-  const char str_heater_switch[] = "aquarioino_heater_switch";
-  const char str_cooler_switch[] = "aquarioino_cooler_switch";
-  const char str_uv_filter_switch[] = "aquarioino_uv_filter_switch";
-  const char str_timers_switch[] = "aquarioino_timers_switch";
-  const char str_turn_off_button[] = "aquarioino_turn_off_button";
-  const char str_restart_button[] = "aquarioino_restart_button";
-  const char str_manual_cleaning_button[] = "aquarioino_manual_cleaning_button";
-  const char str_pwc_button[] = "aquarioino_pwc_button";
-  const char str_feed_button[] = "aquarioino_feed_button";
-  const char str_save_button[] = "aquarioino_save_button";
-  const char str_temperature_max[] = "aquarioino_temperature_max";
-  const char str_temperature_min[] = "aquarioino_temperature_min";
-  const char str_ph_max[] = "aquarioino_ph_max";
-  const char str_ph_min[] = "aquarioino_ph_min";
+  const char str_state_sensor_uid[] = "aquarioino_state_sensor";
+  const char str_weather_forecast_sensor_uid[] = "aquarioino_weather_forecast_sensor";
+  const char str_water_temperature_sensor_uid[] = "aquarioino_water_temperature_sensor";
+  const char str_water_ph_sensor_uid[] = "aquarioino_water_ph_sensor";
+  const char str_air_temperature_sensor_uid[] = "aquarioino_air_temperature_sensor";
+  const char str_air_humidity_sensor_uid[] = "aquarioino_air_humidity_sensor";
+  const char str_air_pressure_sensor_uid[] = "aquarioino_air_pressure_sensor";
+  const char str_light_switch_uid[] = "aquarioino_lights";
+  const char str_heater_switch_uid[] = "aquarioino_heater_switch";
+  const char str_cooler_switch_uid[] = "aquarioino_cooler_switch";
+  const char str_uv_filter_switch_uid[] = "aquarioino_uv_filter_switch";
+  const char str_timers_switch_uid[] = "aquarioino_timers_switch";
+  const char str_turn_off_button_uid[] = "aquarioino_turn_off_button";
+  const char str_restart_button_uid[] = "aquarioino_restart_button";
+  const char str_manual_cleaning_button_uid[] = "aquarioino_manual_cleaning_button";
+  const char str_pwc_button_uid[] = "aquarioino_pwc_button";
+  const char str_feed_button_uid[] = "aquarioino_feed_button";
+  const char str_save_button_uid[] = "aquarioino_save_button";
+  const char str_temperature_max_uid[] = "aquarioino_temperature_max";
+  const char str_temperature_min_uid[] = "aquarioino_temperature_min";
+  const char str_ph_max_uid[] = "aquarioino_ph_max";
+  const char str_ph_min_uid[] = "aquarioino_ph_min";
   const char TEXT_MQTT_NAME_STATE[] = "Estado do Aquario";
   const char TEXT_MQTT_NAME_LIGHT[] = "Aquario Luz";
   const char TEXT_MQTT_NAME_HEATER[] = "Aquario Arquecedor";
@@ -424,6 +488,7 @@
   const char TEXT_MQTT_NAME_AIR_TEMPERATURE[] = "Temperatura do ar";
   const char TEXT_MQTT_NAME_AIR_HUMIDITY[] = "Umidade do ar";
   const char TEXT_MQTT_NAME_AIR_PRESSURE[] = "Pressao Atmosférica";
+  const char TEXT_MQTT_NAME_SAVE[] = "Salvar Configuracoes";
   //
   // Home Assistant (MQTT)
   //
@@ -432,90 +497,81 @@
   HAMqtt mqtt(client, device);
   
   // MQTT general state sensor
-  HASensor sensorState(str_state_sensor);
-  HASensor sensorWeatherForecast(str_weather_forecast_sensor);
+  HASensor sensorState(str_state_sensor_uid);
+  HASensor sensorWeatherForecast(str_weather_forecast_sensor_uid);
 
   // MQTT temperature, humidity and pressure sensors
-  HASensorNumber sensorWaterTemp(str_water_temperature_sensor, HASensorNumber::PrecisionP1);
-  HASensorNumber sensorWaterPh(str_water_ph_sensor, HASensorNumber::PrecisionP1);
-  HASensorNumber sensorAirTemp(str_air_temperature_sensor, HASensorNumber::PrecisionP1);
-  HASensorNumber sensorAirHumidity(str_air_humidity_sensor, HASensorNumber::PrecisionP0);
-  HASensorNumber sensorAirPressure(str_air_pressure_sensor, HASensorNumber::PrecisionP0);
+  HASensorNumber sensorWaterTemp(str_water_temperature_sensor_uid, HASensorNumber::PrecisionP1);
+  HASensorNumber sensorWaterPh(str_water_ph_sensor_uid, HASensorNumber::PrecisionP1);
+  HASensorNumber sensorAirTemp(str_air_temperature_sensor_uid, HASensorNumber::PrecisionP1);
+  HASensorNumber sensorAirHumidity(str_air_humidity_sensor_uid, HASensorNumber::PrecisionP0);
+  HASensorNumber sensorAirPressure(str_air_pressure_sensor_uid, HASensorNumber::PrecisionP0);
 
   // MQTT light switches
-  HALight chkLightSwitch(str_light_switch);
-  HASwitch chkFilterSwitch(str_uv_filter_switch);
-  HASwitch chkHeaterSwitch(str_heater_switch);
-  HASwitch chkCoolerSwitch(str_cooler_switch);
-  HASwitch chkTimersSwitch(str_timers_switch);
+  HALight chkLightSwitch(str_light_switch_uid);
+  HASwitch chkFilterSwitch(str_uv_filter_switch_uid);
+  HASwitch chkHeaterSwitch(str_heater_switch_uid);
+  HASwitch chkCoolerSwitch(str_cooler_switch_uid);
+  HASwitch chkTimersSwitch(str_timers_switch_uid);
 
   // MQTT buttons
-  HAButton btnTurnOff(str_turn_off_button);
-  HAButton btnRestart(str_restart_button);
-  HAButton btnManualCleaning(str_manual_cleaning_button);
-  HAButton btnStartWPC(str_pwc_button);
-  HAButton btnFeed(str_feed_button);
-  HAButton btnSave(str_save_button);
+  HAButton btnTurnOff(str_turn_off_button_uid);
+  HAButton btnRestart(str_restart_button_uid);
+  HAButton btnManualCleaning(str_manual_cleaning_button_uid);
+  HAButton btnStartWPC(str_pwc_button_uid);
+  HAButton btnFeed(str_feed_button_uid);
+  HAButton btnSave(str_save_button_uid);
 
   // MQTT parameters
-  HANumber lblTemperatureMax(str_temperature_max, HASensorNumber::PrecisionP1);
-  HANumber lblTemperatureMin(str_temperature_min, HASensorNumber::PrecisionP1);
-  HANumber lblPhMax(str_ph_max, HASensorNumber::PrecisionP1);
-  HANumber lblPhMin(str_ph_min, HASensorNumber::PrecisionP1);
+  HANumber lblTemperatureMax(str_temperature_max_uid, HASensorNumber::PrecisionP1);
+  HANumber lblTemperatureMin(str_temperature_min_uid, HASensorNumber::PrecisionP1);
+  HANumber lblPhMax(str_ph_max_uid, HASensorNumber::PrecisionP1);
+  HANumber lblPhMin(str_ph_min_uid, HASensorNumber::PrecisionP1);
 
 #endif
-
-struct timer{
-   bool enabled = false; 
-   bool active = false; 
-   byte relay = 0x00;
-   byte turnOnHour = 0x00;
-   byte turnOnMinute = 0x00;
-   byte turnOffHour = 0x00;
-   byte turnOffMinute = 0x00;
-};
-
-struct measure {
-   float value = 0;
-   float valueEWMA = 0;
-   float valueMax = 0;
-   float valueMin = 100000000000;
-};
 
 //
 // Globals: states and measured values
 //
 DateTime _now;
-int _status = 0;                     // aguarium state code
-bool _timersEnabled = true;          // enables/disables timers
-bool _statusFeeded = false;          
-bool _statusForceLights = false;
-bool _waterDrainLevelLow = false;
-bool _waterSumpLevelLow = false;
-measure _measuredAirTemperature;
-measure _measuredAirHumidity;
-measure _measuredAirPressure;
-measure _measuredAirAltitude;
-measure _measuredAirSealevelPressure;
-measure _measuredWaterTemperature;
-measure _measuredWaterPh;
-unsigned long _lastAvailabilityTime = millis();
+int _status = 0;                                 // aguarium state code
+bool _isTimersEnabled = true;                    // enables/disables timers
+bool _statusFeeded = false;                      // checks that feed routine was executed
+bool _waterDrainLevelLow = false;                // "drain" water level state (see diagram above)
+bool _waterSumpLevelLow = false;                 // "sump" water level state (see diagram above)
+measure _measuredAirTemperature;                 // air temperature (C)
+measure _measuredAirHumidity;                    // air humidity (%)
+measure _measuredAirPressure;                    // atmosferic pressure (mPa)
+measure _measuredAirAltitude;                    // altirude (m)
+measure _measuredAirSealevelPressure;            // sea level pressure (mPa)  
+measure _measuredWaterTemperature;               // water temperature (C)
+measure _measuredWaterPh;                        // water pH 
 bool _blink = false;
+unsigned long _lastAvailabilityTime = millis();
 
-// required for "setAllRelays()"
-const unsigned int RELAY_PINS[] = {RELAY_LIGHTS_PIN, RELAY_HEATER_PIN, RELAY_FILTER_UV_PIN, RELAY_COOLER_FAN_PIN, RELAY_SUMP_PUMP_PIN, RELAY_WATER_REPOSITION_PUMP_PIN, RELAY_DRAIN_PUMP_PIN, RELAY_EXTRA_PIN};
+// required for "setAllRelays()" routine
+const unsigned int RELAY_PINS[] = {RELAY_LIGHTS_PIN, RELAY_HEATER_PIN, RELAY_FILTER_UV_PIN, RELAY_COOLER_FAN_PIN, RELAY_SUMP_PUMP_PIN, RELAY_WATER_REPOSITION_PUMP_PIN, RELAY_DRAIN_PUMP_PIN, RELAY_FEEDER_PIN};
 // relay states cache
-bool RELAY_STATES[8];
+bool RELAY_STATES[RELAY_SIZE];
+// force relay state to ON (turn on by user button)
+bool RELAY_FORCED_TURN_ON[RELAY_SIZE];
+
 // timers
-timer RELAY_TIMERS[MAX_NUMBER_OF_TIMERS];
+#if (USE_STANDALONE_TIMERS == true)
+  #define TIMERS_SIZE MAX_NUMBER_OF_TIMERS
+#else
+  // minimum for store default timers (5) on EEPROM
+  #define TIMERS_SIZE 5
+#endif
+timer RELAY_TIMERS[TIMERS_SIZE];
 
 //
-// reference levels (default levels)
+// reference alarm levels/bounds (with default values)
 //
-float _levelWaterTempMin = 26.0;
-float _levelWaterTempMax = 29.1;
-float _levelWaterPhMin = 7.5;
-float _levelWaterPhMax = 8.9;
+float _alarmBoundWaterTemperatureMin = 26.0;
+float _alarmBoundWaterTemperatureMax = 29.1;
+float _alarmBoundWaterPhMin = 7.5;
+float _alarmBoundWaterPhMax = 8.9;
 // timers start/end hours
 unsigned int _timerLightStart = 6;
 unsigned int _timerLightEnd = 23;
@@ -536,11 +592,15 @@ void setup() {
   //
   // initialization
   //
-  pinMode(LED_BUILTIN, OUTPUT);  
+  pinMode(LED_BUILTIN, OUTPUT); // blinking led 
 
   #if (DEBUG_MODE == true)
-    // serial only in debug mode!
-    Serial.begin(9600);
+    // serial output only in debug mode!
+    Serial.begin(9600);    
+    while (!Serial) {
+      // wait for serial port to connect
+      delay(100);
+    }     
     Serial.println(F("starting..."));
   #endif
 
@@ -553,7 +613,7 @@ void setup() {
     pinMode(RELAY_FILTER_UV_PIN, OUTPUT);
     pinMode(RELAY_SUMP_PUMP_PIN, OUTPUT);
     pinMode(RELAY_DRAIN_PUMP_PIN, OUTPUT);
-    pinMode(RELAY_EXTRA_PIN, OUTPUT);
+    pinMode(RELAY_FEEDER_PIN, OUTPUT);
     pinMode(RELAY_COOLER_FAN_PIN, OUTPUT);
     pinMode(RELAY_WATER_REPOSITION_PUMP_PIN, OUTPUT);
 
@@ -563,7 +623,7 @@ void setup() {
     digitalWrite(RELAY_SUMP_PUMP_PIN, HIGH);
     digitalWrite(RELAY_FILTER_UV_PIN, HIGH);
     digitalWrite(RELAY_DRAIN_PUMP_PIN, HIGH);
-    digitalWrite(RELAY_EXTRA_PIN, HIGH);  
+    digitalWrite(RELAY_FEEDER_PIN, HIGH);  
     digitalWrite(RELAY_COOLER_FAN_PIN, HIGH);
     digitalWrite(RELAY_WATER_REPOSITION_PUMP_PIN, HIGH);  
   #endif
@@ -577,7 +637,7 @@ void setup() {
       #if (DEBUG_MODE == true)
       Serial.println(F("LCD debug mode!"));
       #endif
-      // does not intializes anything more...
+      // case testing LCD, does not intializes anything more... :)
       return;
     #endif
   #endif
@@ -587,13 +647,16 @@ void setup() {
     // initialize real time clock (RTC)
     //  
     if (! _clock.begin()) {
-      #if (DEBUG_MODE == true)
+      // clock not found!
+      #if (DEBUG_MODE == true)      
       Serial.println(F("clock RTC DS3231 not found! Stop!"));
       #endif
+
       #if (USE_LCD_DISPLAY)
       _lcd.setCursor(0, 0);
       _lcd.print(TEXT_CLOCK_NOT_FOUND);
       #endif
+
       // Clock NOT FOUND: STOP!
       while (1);
     }
@@ -602,6 +665,7 @@ void setup() {
       #if (DEBUG_MODE == true)
         Serial.println(F("settting clock RTC DS3231 date and time!"));
       #endif
+
       // sets sketch compilation date and time
       _clock.adjust(DateTime(F(__DATE__), F(__TIME__)));  
     }
@@ -611,12 +675,14 @@ void setup() {
     #endif
 
     #if (DEBUG_RTC_ROUTINE == true)
-      // RTC debug routine
-      _clock.adjust(DateTime(F(__DATE__), F(__TIME__)));
+      // RTC testing routine
       #if (DEBUG_MODE == true)
         Serial.println(F("real time clock debug mode!)");
       #endif
-      // does not intializes anything more...
+
+      _clock.adjust(DateTime(F(__DATE__), F(__TIME__)));
+
+      // case testing RTC, does not intializes anything more...
       return;
     #endif
   #endif
@@ -628,6 +694,7 @@ void setup() {
       #if (DEBUG_MODE == true)
         Serial.println(F("starting water temperature sensor"));
       #endif
+
     _sensorWaterTemperature.begin();    
   #endif
   
@@ -635,19 +702,22 @@ void setup() {
       #if (DEBUG_MODE == true)
         Serial.println(F("starting air temperature sensor"));
       #endif
+
     _sensorAirTemperature.begin();
   #endif
   
   #if (USE_AIR_PRESSURE_SENSOR == true)
     if (!_sensorAirPresure.begin()) {
+      // sensor not found
       #if (DEBUG_MODE == true)
-      Serial.println(F("ERROR: Air pressure sensor BMP180 not found!"));
+        Serial.println(F("ERROR: Air pressure sensor BMP180 not found!"));
       #endif
     }
     else {
+      // initialize pressure measurements
       updateMeasure(_measuredAirPressure, _sensorAirPresure.readPressure());
       
-      #if (USE_EEPROM == true)
+      //#if (USE_EEPROM == true)
       // updateMeasure(_measuredAirPressure.value, (float) EEPROM.read(EEPROM_PRESSURE_ADDRESS));
       // if (_measuredAirPressure.value == 0) 
       //   _measuredAirPressureAvg = _measuredAirPressure;
@@ -656,7 +726,7 @@ void setup() {
       // // EEPROM.update(EEPROM_PRESSURE_ADDRESS, (byte)_measuredAirPressureAvg); 
       // #else
       // _measuredAirPressureAvg = _measuredAirPressure;
-      #endif
+      //#endif
     }
   #endif
 
@@ -736,6 +806,10 @@ void setup() {
     btnFeed.setName(TEXT_MQTT_NAME_FEED);
     btnFeed.onCommand(onButtonCommand);
 
+    btnSave.setName(TEXT_MQTT_NAME_SAVE);
+    btnFeed.onCommand(onButtonCommand);
+
+
     lblTemperatureMax.setMin(10);
     lblTemperatureMax.setMax(40);
     lblTemperatureMax.setStep(0.1);
@@ -749,21 +823,19 @@ void setup() {
     lblPhMax.setMin(3);
     lblPhMax.setMax(12);
     lblPhMax.setStep(0.1);
-    HANumber lblPhMax(str_ph_max, HASensorNumber::PrecisionP1);
-
+    lblPhMax.onCommand(onNumberChange);
+    
     lblPhMin.setMin(3);
     lblPhMin.setMax(12);
     lblPhMin.setStep(0.1);
-    HANumber lblPhMin(str_ph_min, HASensorNumber::PrecisionP1);
-  
+    lblPhMin.onCommand(onNumberChange);
+    
+    // start MQTT
     mqtt.begin(MQTT_BROKER_ADDRESS, MQTT_BROKER_PORT, MQTT_USERNAME, MQTT_PASSWORD);
   #endif
 
-  #if (USE_EEPROM == true)
-    _statusForceLights = bitRead(EEPROM.read(EEPROM_FLAGS_ADDRESS), EEPROM_FLAG_LIGHT_BIT);    
-  #else
-    _statusForceLights = false;
-  #endif
+  // loads system configurations
+  loadConfigurations();
   
   //
   // set defaults
@@ -782,7 +854,7 @@ void loop() {
   //
   // main loop
   //
-  digitalWrite(LED_BUILTIN, (_blink ? HIGH: LOW));
+  digitalWrite(LED_BUILTIN, (_blink ? HIGH: LOW)); // blinking led
   _blink = !_blink;
 
   #if (USE_HOME_ASSISTANT)
@@ -799,9 +871,10 @@ void loop() {
   #endif
 
   //
-  // a test routines was executed! do not continue!!!
+  // execute testing routines (if required)
   //
   if (testComponents())    
+    // test routines was executed! do not continue!!!
     return;
   
   //
@@ -810,62 +883,65 @@ void loop() {
   readData();
 
   if (_status == STATUS_CODE_TURNED_OFF) {
-    // arquarioino is turned off
+    //
+    // turned off: nothing to do!
+    //
     turnOff();
     return;
   }
 
   #if (USE_LCD_DISPLAY == true)  
-    //
-    // shows rotating messages on LCD display
-    //
+    // sets 1st LCD line: mensages
     _lcd.setCursor(0, 0);
-    switch (_status) {
-      case STATUS_CODE_SHOW_AIR_TEMPERATURE_01:
-        showAirTemperature1();
-        break;
-      case STATUS_CODE_SHOW_AIR_TEMPERATURE_02:
-        showAirTemperature2();
-        break;
-      case STATUS_CODE_SHOW_WEATHER_FORECAST_LOCAL:
-        showLocalWeatherForecast();
-        break;  
-      case STATUS_CODE_SHOW_WATER_TEMPERATURE_01:
-        showWaterTemperature(1);
-        break;
-      case STATUS_CODE_SHOW_WATER_TEMPERATURE_02:
-        showWaterTemperature(2);
-        break;
-      case STATUS_CODE_SHOW_WATER_TEMPERATURE_03:
-        showWaterTemperature(3);
-        break;
-      case STATUS_CODE_SHOW_WATER_PH:
-        showWaterPh();
-        break;
-      case STATUS_CODE_SHOW_FLAGS:
-        showSystemFlags();
-        break;    
-      default:
-        // shows date and time
-        showDateTime();
-        break;
-    }
   #endif
-
-  // routines execution status
+  //
+  // shows rotating messages on LCD display / serial
+  //    
   switch (_status) {
+    case STATUS_CODE_SHOW_AIR_TEMPERATURE_01:
+      showAirTemperature1();
+      break;
+    case STATUS_CODE_SHOW_AIR_TEMPERATURE_02:
+      showAirTemperature2();
+      break;
+    case STATUS_CODE_SHOW_WEATHER_FORECAST_LOCAL:
+      showLocalWeatherForecast();
+      break;  
+    case STATUS_CODE_SHOW_WATER_TEMPERATURE_01:
+      showWaterTemperature(1);
+      break;
+    case STATUS_CODE_SHOW_WATER_TEMPERATURE_02:
+      showWaterTemperature(2);
+      break;
+    case STATUS_CODE_SHOW_WATER_TEMPERATURE_03:
+      showWaterTemperature(3);
+      break;
+    case STATUS_CODE_SHOW_WATER_PH:
+      showWaterPh();
+      break;
+    case STATUS_CODE_SHOW_FLAGS:
+      showSystemFlags();
+      break;    
     case STATUS_CODE_MANUAL_CLEANING:
       runManualCleaning();
       break;
     case STATUS_CODE_EXECUTION_WATER_PARTIAL_CHANGE_ROUTINE:
       runWaterParcialChangeRoutine();
       break;    
+    case STATUS_CODE_TURNED_OFF:
+      return;
+    default:
+      // shows date and time
+      showDateTime();
+      break;
   }
+  
 
   #if (USE_LCD_DISPLAY == true)  
-    // sets 2nd LCD line: alarms
+    // sets 2nd LCD line: alarms!
     _lcd.setCursor(0, 1);
   #endif
+
   #if (ENABLE_SENSOR_ALARMS == true)
     showAlarms();
   #endif
@@ -874,7 +950,7 @@ void loop() {
   for (int i = 0; i <= 10 && !readButtons(); i++) {
     
     #if (USE_STANDALONE_TIMERS == true)
-      handleTimers();
+      runTimers();
     #endif
 
     #if (ENABLE_SENSOR_ALARMS == true)
@@ -884,7 +960,7 @@ void loop() {
     delay(500);
   }
 
-  // increments states (not for unusual ones: off/cleaning/PWC)
+  // increments states
   nextAquariumState();
 }
 
@@ -903,20 +979,21 @@ void updateMeasure(measure& state, const float& value) {
   state.value = value;
 
   // exponential weighted mean avarage (EWMA) values
-  if (state.valueEWMA == 0)
-      state.valueEWMA = state.value;
-  state.valueEWMA = (1 - LAMBDA_EWMA) * value + LAMBDA_EWMA * state.valueEWMA; 
+  if (state.average == 0)
+      state.average = state.value;
+  state.average = (1 - LAMBDA_EWMA) * value + LAMBDA_EWMA * state.average; 
   
   // maximum
-  if (value > state.valueMax) 
-    state.valueMax = value;
+  if (value > state.max) 
+    state.max = value;
 
   // minimum
-  if (value > state.valueMin) 
-    state.valueMin = value;
+  if (value < state.min) 
+    state.min = value;
 }
 
-void setRelay(unsigned int relayPin, const bool& state, const bool& useIndex = false) {
+void setRelay(unsigned int relayPin, const bool& state, 
+  const bool& useIndex = false, const bool& force = false) {
   //
   // sets relay state by relay pin number (useIndex = false): 
   // set "true" to activates the relay, "false" to deactivates it.
@@ -924,20 +1001,48 @@ void setRelay(unsigned int relayPin, const bool& state, const bool& useIndex = f
   // alternativelly, set relay state by its index ([0-7]) (useIndex = true)
   //
   #if (USE_RELAYS == true)
+
+    // gets relay index by pin number
     unsigned int index = (useIndex ? relayPin : getRelayIndexByPin(relayPin));
+  
     // ensure valid relay pin
     if (index >= RELAY_SIZE){
-      // invalid pin 
+      // invalid relay pin! 
       #if (DEBUG_MODE == true) 
         Serial.print(F("Invalid relay pin: "));
         Serial.println(relayPin);    
       #endif
       return;
     }
-    if (useIndex)     
+  
+    if (useIndex)
+      // gets relay pin from relay index
       relayPin = RELAY_PINS[index];
     
-    // relays are active LOW!
+    #if (FEEDING_AS_PUSH_BUTTON == true)
+      if (relayPin == RELAY_FEEDER_PIN) {
+        // feeder relay works different: just a push button press        
+        feed();        
+        return;
+      }
+    #endif
+
+    if (force) {
+      // set forced state: keeps the flag on/off
+      RELAY_FORCED_TURN_ON[index] = state;
+    }
+    else if (!state && RELAY_FORCED_TURN_ON[index]){
+      // if "forced turned on", do not turn off
+      return;
+    }
+
+    if (RELAY_STATES[index] == state)
+      // nothing to do!
+      return;
+
+    //
+    // [IMPORTANT] relays are active LOW!
+    //
     digitalWrite(relayPin, (state ? LOW : HIGH));
     
     // keeps relay state on cache
@@ -954,27 +1059,23 @@ void setRelay(unsigned int relayPin, const bool& state, const bool& useIndex = f
     
     #if (USE_HOME_ASSISTANT == true) 
       //
-      // updates home assistant
+      // updates states on home assistant MQTT switches
       //
-      switch(relayPin){
-
+      switch (relayPin) {
         case RELAY_LIGHTS_PIN:
           chkLightSwitch.setState(state);
           break;
-
         case RELAY_HEATER_PIN:
           chkHeaterSwitch.setState(state);
           break;
-
         case RELAY_COOLER_FAN_PIN:
           chkCoolerSwitch.setState(state);
           break;
-
         case RELAY_FILTER_UV_PIN:
           chkFilterSwitch.setState(state);
-          break;        
+          break;
       }
-    #endif    
+    #endif
   #endif
 }
 
@@ -983,36 +1084,38 @@ bool setAquariumState(unsigned int state) {
   //
   //
   if (_status == state)
-    // nothing to do
+    // nothing to do!
+    return false;
+
+  if (state < STATUS_CYCLE_START || state > STATUS_CODE_TURNED_OFF)
+    // invalid state
     return false;
 
   // stores state
   _status = state;
 
-  switch (state) {    
-    case STATUS_CODE_TURNED_OFF:
-      _statusForceLights = false;
-      break;    
-
-    case STATUS_CODE_MANUAL_CLEANING:
-      _statusForceLights = false;
-      break;          
+  // removes forced turn on at manual cleaning, pwc or turn off
+  if (state == STATUS_CODE_MANUAL_CLEANING 
+    || state == STATUS_CODE_EXECUTION_WATER_PARTIAL_CHANGE_ROUTINE 
+    || state == STATUS_CODE_TURNED_OFF) {
+    for(unsigned int i = 0; i < RELAY_SIZE; i++)
+        RELAY_FORCED_TURN_ON[i] = false;
   }
   
   #if (DEBUG_MODE == true) 
+    //
+    // prints current state at serial
+    //
     switch (state) {
       case STATUS_CODE_TURNED_OFF:
         Serial.println(F("STATUS: Aquarium turned off"));
         break;
-
       case STATUS_CODE_EXECUTION_WATER_PARTIAL_CHANGE_ROUTINE:
         Serial.println(F("STATUS: Water Partial Change"));
         break;
-
       case STATUS_CODE_MANUAL_CLEANING:
         Serial.println(F("STATUS: Manual Cleaning"));
         break;
-
       default:
         Serial.println(F("STATUS: Running"));
         break;
@@ -1020,20 +1123,24 @@ bool setAquariumState(unsigned int state) {
   #endif  
 
   #if (USE_HOME_ASSISTANT == true) 
+    //
+    // updates MQTT state sensor
+    //
     switch (state) {
       case STATUS_CODE_TURNED_OFF:
+        // turned off status
         sensorState.setValue(TEXT_MQTT_NAME_TURN_OFF);
         break;
-
       case STATUS_CODE_EXECUTION_WATER_PARTIAL_CHANGE_ROUTINE:
+        // PWC status
         sensorState.setValue(TEXT_MQTT_NAME_PWC);
         break;
-
       case STATUS_CODE_MANUAL_CLEANING:
+        // manual cleaning status
         sensorState.setValue(TEXT_MQTT_NAME_MANUAL_CLEANING);
         break;
-
       default:
+        // otherwise, status "running"
         sensorState.setValue(TEXT_MQTT_NAME_RUNNING);
         break;
     }
@@ -1046,8 +1153,9 @@ bool setAquariumState(unsigned int state) {
 void nextAquariumState(){
   //
   // increments states (not for unusual ones: off/cleaning/PWC)
-  //
+  //  
   if (_status < STATUS_CYCLE_OFF) {
+    // increment state
     _status++;
 
     // circular state transition
@@ -1056,15 +1164,28 @@ void nextAquariumState(){
   }
 }
 
-void setAllRelays(const bool& state, const unsigned int& exception = RELAY_SIZE) {
+void setAllRelays(const bool& state, const unsigned int& exception = RELAY_SIZE, const bool& force = false) {
   //
-  // sets all relays at specified state
+  // sets all relays at specified state (with an inverted exception, if required)
   //
+  #if (FEEDING_AS_PUSH_BUTTON == true)
+    unsigned int feed_index = getRelayIndexByPin(RELAY_FEEDER_PIN);
+  #endif  
+
   for (unsigned int index = 0; index < RELAY_SIZE; index++) {
+    
+    #if (FEEDING_AS_PUSH_BUTTON == true)
+      // om feeding "as push button", the feed relay
+      // cannot be turned on/off
+      if (index == feed_index){        
+        continue;
+      }
+    #endif
+
     if (exception < RELAY_SIZE && index == exception)
-      setRelay(index, !state, true);
+      setRelay(index, !state, true, force);
     else
-      setRelay(index, state, true);
+      setRelay(index, state, true, force);
   }
 }
 
@@ -1078,9 +1199,78 @@ unsigned int getRelayIndexByPin(const unsigned int& relayPin){
       return index;
   #endif
 
-  // not found
+  // not found!
   return RELAY_SIZE;
 }
+
+String getRelayNameByPin(const unsigned int& relayPin){
+  //
+  // gets relay encoded name by specified relay pin number
+  //
+  switch (relayPin) {
+
+    case RELAY_LIGHTS_PIN:
+      return String(TEXT_RELAY_LIGHTS);
+
+    case RELAY_HEATER_PIN:
+      return String(TEXT_RELAY_HEATER);
+
+    case RELAY_COOLER_FAN_PIN:
+      return String(TEXT_RELAY_COOLER);
+
+    case RELAY_FILTER_UV_PIN:
+      return String(TEXT_RELAY_FILTER);
+    
+    case RELAY_SUMP_PUMP_PIN:
+      return String(TEXT_RELAY_SUMP_PUMP);
+
+    case RELAY_DRAIN_PUMP_PIN:
+      return String(TEXT_RELAY_DRAIN_PUMP);
+
+    case RELAY_WATER_REPOSITION_PUMP_PIN:
+      return String(TEXT_RELAY_REPOSITION_PUMP);
+
+    case RELAY_FEEDER_PIN:
+      return String(TEXT_RELAY_FEED);    
+  }  
+
+  // not found!
+  return String(TEXT_UNKNOW);
+}
+
+unsigned int getRelayPinByName(const String& relayName) {
+  //
+  // gets relay pin number by specified encoded name
+  //
+  if (relayName.endsWith(TEXT_RELAY_LIGHTS))
+      return RELAY_LIGHTS_PIN;
+
+  if (relayName.endsWith(TEXT_RELAY_HEATER))
+      return RELAY_HEATER_PIN;
+
+  if (relayName.endsWith(TEXT_RELAY_COOLER))
+      return RELAY_COOLER_FAN_PIN;
+
+  if (relayName.endsWith(TEXT_RELAY_FILTER))
+      return RELAY_FILTER_UV_PIN;
+
+  if (relayName.endsWith(TEXT_RELAY_SUMP_PUMP))
+      return RELAY_SUMP_PUMP_PIN;
+
+  if (relayName.endsWith(TEXT_RELAY_DRAIN_PUMP))
+      return RELAY_DRAIN_PUMP_PIN;
+
+  if (relayName.endsWith(TEXT_RELAY_REPOSITION_PUMP))
+      return RELAY_WATER_REPOSITION_PUMP_PIN;
+
+  if (relayName.endsWith(TEXT_RELAY_FEED))
+      return RELAY_FEEDER_PIN;
+
+  // not found!
+  return RELAY_SIZE;
+}
+
+
 
 int availableMemory() {
   //
@@ -1093,18 +1283,30 @@ int availableMemory() {
   return size;
 }
 
+
+#if (DEBUG_MODE == true)
+  
+  void printMeasure(const measure& measure) {
+    //
+    // print measure values
+    //
+    Serial.print(" - value: ");
+    Serial.print(measure.value);
+    Serial.print(", avg: ");
+    Serial.print(measure.average);
+    Serial.print(", max: ");
+    Serial.print(measure.max);
+    Serial.print(", min: ");
+    Serial.println(measure.min);
+  }
+
+#endif
+
 //--------------------------------------------------------------------------------------------------
 //
 // EEPROM
 //
 //--------------------------------------------------------------------------------------------------
-void saveLightState(const boolean& value){
-  //
-  // Saves light state on EEPROM
-  //
-  _statusForceLights = value;
-  saveConfigurationFlag(EEPROM_FLAG_LIGHT_BIT, value);
-}
 
 void saveConfigurationFlag(const unsigned int& bit, const boolean& value) {
   //
@@ -1116,6 +1318,299 @@ void saveConfigurationFlag(const unsigned int& bit, const boolean& value) {
     EEPROM.update(EEPROM_FLAGS_ADDRESS, flags);
   #endif
 }
+
+
+void setTimersEnabled(const boolean& value) {
+  //
+  // enables/disables timers execution
+  //
+  if (_isTimersEnabled != value) {
+    _isTimersEnabled = value;
+    #if (USE_EEPROM == true)
+      saveConfigurationFlag(EEPROM_FLAG_TIMERS_ENABLED_BIT, value);
+    #endif
+  }
+}
+
+void loadConfigurations(){
+  //
+  // loads configuration from EEPROM
+  //
+  unsigned int index;
+  #if (USE_EEPROM == true)
+
+    #if (DEBUG_MODE == true)
+      Serial.println(F("loading configurations from EEPROM"));
+    #endif
+
+    byte check = EEPROM.read(EEPROM_START_ADDRESS);
+    if (check != EEPROM_START_CHECK) {
+      // EEPROM checker not found: loads default configurations
+      #if (DEBUG_MODE == true)
+        Serial.println(F("no previous data found on EEPROM! loading default configurations!"));
+      #endif
+      // loads default configuration
+      loadDefaultConfigurations();      
+      // saves default
+      saveConfigurations();
+      return;
+    }    
+    
+    // loads states flags
+    byte states = EEPROM.read(EEPROM_FLAGS_ADDRESS);
+    _isTimersEnabled = bitRead(states, EEPROM_FLAG_TIMERS_ENABLED_BIT) == 1; 
+    
+    #if (DEBUG_MODE == true)
+      Serial.print(F(" - timers enabled: "));
+      Serial.print(toStr(_isTimersEnabled));
+    #endif
+    
+    // alarms bounds (min, max)
+    unsigned int address = EEPROM_ALARM_BOUNDS_ADDRESS;
+    EEPROM.get(address, _alarmBoundWaterTemperatureMax);
+    address+= sizeof(float);
+    EEPROM.get(address, _alarmBoundWaterTemperatureMin);
+    address+= sizeof(float);
+    EEPROM.get(address, _alarmBoundWaterPhMax);
+    address+= sizeof(float);
+    EEPROM.get(address, _alarmBoundWaterPhMin);
+    address+= sizeof(float);
+    
+    #if (DEBUG_MODE == true)
+      Serial.print(F(" - temp max: "));
+      Serial.println(_alarmBoundWaterTemperatureMax);
+      Serial.print(F(" - temp min: "));
+      Serial.println(_alarmBoundWaterTemperatureMin);
+      Serial.print(F(" - ph max: "));
+      Serial.println(_alarmBoundWaterPhMax);
+      Serial.print(F(" - ph min: "));
+      Serial.println(_alarmBoundWaterPhMin);
+    #endif
+
+    // loads pressure reference
+    float p;
+    EEPROM.get(address, p);
+    #if (DEBUG_MODE == true)
+      Serial.print(F(" - historical atm pressure: "));
+      Serial.println(p);      
+    #endif
+
+    loadTimers();    
+
+  #else    
+    // loads default configurations
+    loadDefaultConfigurations();    
+  #endif
+}
+
+void loadTimers() {
+  //
+  // loads timers from EEPROM
+  //
+  #if (USE_STANDALONE_TIMERS == true && USE_EEPROM == true)
+    byte check = EEPROM.read(EEPROM_START_ADDRESS);
+    if (check != EEPROM_START_CHECK) {      
+      // EEPROM checker not found: no timers!
+      #if (DEBUG_MODE == true)
+        Serial.println(F("Warning: no previous configuration found on EEPROM!"));
+      #endif
+
+      cleanTimers();
+      return;    
+    }
+
+    // reads timers
+    address= EEPROM_TIMERS_ADDRESS;
+    unsigned int n = EEPROM.read(address);
+    #if (DEBUG_MODE == true)
+      Serial.print(F("Loading "));
+      Serial.print(n);
+      Serial.println(F("timers from EEPROM:"));
+    #endif
+
+    for (unsigned int i = 0; i < n; i++){
+      // relay "bit 7" is the "enabled" state
+      byte relayIndex = EEPROM.read(address++);
+      RELAY_TIMERS[i].enabled = bitRead(relayIndex, 7);
+      bitWrite(relayIndex, 7, 0);      
+      RELAY_TIMERS[i].relayIndex = relayIndex; 
+      RELAY_TIMERS[i].turnOnHour = EEPROM.read(address++);;
+      RELAY_TIMERS[i].turnOnMinute = EEPROM.read(address++);;
+      RELAY_TIMERS[i].turnOffHour = EEPROM.read(address++);;
+      RELAY_TIMERS[i].turnOffMinute = EEPROM.read(address++);;
+      RELAY_TIMERS[i].active = true;
+
+      #if (DEBUG_MODE == true)
+        printTimer(RELAY_TIMERS[i], i);
+      #endif
+    }
+  #endif
+}
+
+void saveConfigurations(const bool savingTimers = true) {
+  //
+  // saves configuration on EEPROM
+  //
+  #if (USE_EEPROM == true)
+    
+    #if (DEBUG_MODE == true)
+      Serial.println(F("saving current configurations at EEPROM"));
+    #endif
+
+    // EEPROM value checker
+    EEPROM.update(EEPROM_START_ADDRESS, EEPROM_START_CHECK);
+    
+    // general state flags
+    byte flags = EEPROM.read(EEPROM_FLAGS_ADDRESS);
+    bitWrite(flags, EEPROM_FLAG_LIGHT_BIT, _isLightsOnForced);
+    bitWrite(flags, EEPROM_FLAG_TIMERS_ENABLED_BIT, _isTimersEnabled);
+    EEPROM.update(EEPROM_FLAGS_ADDRESS, flags);
+
+    float value;
+    // alarms bounds (min, max)    
+    unsigned int address = EEPROM_ALARM_BOUNDS_ADDRESS;
+    value = EEPROM.get(address, value);
+    if (value != _alarmBoundWaterTemperatureMax)
+      EEPROM.put(address, _alarmBoundWaterTemperatureMax);
+    address+= sizeof(float);
+
+    value = EEPROM.get(address, value);
+    if (value != _alarmBoundWaterTemperatureMin)
+      EEPROM.put(address, _alarmBoundWaterTemperatureMin);
+    address+= sizeof(float);
+
+    value = EEPROM.get(address, value);
+    if (value != _alarmBoundWaterPhMax)
+      EEPROM.put(address, _alarmBoundWaterPhMax);
+    address+= sizeof(float);
+
+    value = EEPROM.get(address, value);
+    if (value != _alarmBoundWaterPhMin)
+      EEPROM.put(address, _alarmBoundWaterPhMin);
+    address+= sizeof(float);
+    
+    // saves pressure reference
+    value = EEPROM.get(address, value);
+    if (value != _measuredAirPressure.average)
+      EEPROM.put(address, _measuredAirPressure.average);
+    
+    if (savingTimers)
+      saveTimers();
+
+  #endif
+}
+
+
+void saveTimers() {
+  //
+  // saves timers configurations on EEPROM
+  //
+  #if (USE_EEPROM == true)      
+    unsigned int n_timers = getTimersCount();
+    #if (DEBUG_MODE == true)
+      Serial.print(F("Saving "));
+      Serial.print(n_timers);
+      Serial.println(F(" timers at EEPROM"));
+    #endif
+    
+    unsigned int address = EEPROM_TIMERS_ADDRESS;
+    EEPROM.update(address++, n_timers);
+
+    for (unsigned int i = 0; i < TIMERS_SIZE; i++) {     
+      // for each timer, check if its active (and valid)
+      if (RELAY_TIMERS[i].active && is_valid_timer(RELAY_TIMERS[i])) {
+        byte relay_index = RELAY_TIMERS[i].relay;
+        if (RELAY_TIMERS[i].enabled)
+          bitWrite(relay_index, 7, 1);
+        EEPROM.update(address++, relay_index);
+        EEPROM.update(address++, RELAY_TIMERS[i].turnOnHour);
+        EEPROM.update(address++, RELAY_TIMERS[i].turnOnMinute);
+        EEPROM.update(address++, RELAY_TIMERS[i].turnOffHour);
+        EEPROM.update(address++, RELAY_TIMERS[i].turnOffMinute);
+      }
+    }
+
+    #if (DEBUG_MODE == true)
+      Serial.println(F("saved timers:"));
+      printTimers();
+    #endif
+
+  #endif
+}
+
+void loadDefaultConfigurations() {
+  //
+  // loads default configurations
+  //
+  #if (DEBUG_MODE == true)
+    Serial.println(F("Loading default configurations"));
+  #endif
+
+  _isTimersEnabled = USE_STANDALONE_TIMERS;
+  // default alarms bounds
+  _alarmBoundWaterTemperatureMax = DEFAULT_ALARM_BOUND_TEMP_MAX;
+  _alarmBoundWaterTemperatureMin = DEFAULT_ALARM_BOUND_TEMP_MIN;
+  _alarmBoundWaterPhMax = DEFAULT_ALARM_BOUND_PH_MAX;
+  _alarmBoundWaterPhMin = DEFAULT_ALARM_BOUND_PH_MIN;
+  
+  // default timers
+  loadDefaultTimers();
+}
+
+void loadDefaultTimers(){
+  //
+  // loads default timers configurations
+  //
+  cleanTimers();
+
+  unsigned int index = getRelayIndexByPin(RELAY_LIGHTS_PIN);
+  RELAY_TIMERS[0].enabled = true; // LIGHTS: 06:00-23:00h
+  RELAY_TIMERS[0].relayIndex = index; 
+  RELAY_TIMERS[0].turnOnHour = DEFAULT_TIMER_LIGHT_ON;
+  RELAY_TIMERS[0].turnOnMinute = 0;
+  RELAY_TIMERS[0].turnOffHour = DEFAULT_TIMER_LIGHT_OFF;
+  RELAY_TIMERS[0].turnOffMinute = 0;
+  RELAY_TIMERS[0].active = true;
+
+  index = getRelayIndexByPin(RELAY_FILTER_UV_PIN);
+  RELAY_TIMERS[1].enabled = true; // UV FILTER: 08:00-15:00h
+  RELAY_TIMERS[1].relayIndex = index;
+  RELAY_TIMERS[1].turnOnHour = DEFAULT_TIMER_UV_ON;
+  RELAY_TIMERS[1].turnOnMinute = 0;
+  RELAY_TIMERS[1].turnOffHour = DEFAULT_TIMER_UV_OFF;
+  RELAY_TIMERS[1].turnOffMinute = 0;
+  RELAY_TIMERS[1].active = true;
+  
+  index = getRelayIndexByPin(RELAY_FEEDER_PIN);
+  RELAY_TIMERS[2].relayIndex = index;  //FEED 07h
+  RELAY_TIMERS[2].turnOnHour = DEFAULT_TIMER_FEED_1;
+  RELAY_TIMERS[2].turnOnMinute = 00;
+  RELAY_TIMERS[2].turnOffHour = 00;
+  RELAY_TIMERS[2].turnOffMinute = 00;
+  RELAY_TIMERS[2].active = true;
+  
+  RELAY_TIMERS[3].relayIndex = index; //FEED 12h
+  RELAY_TIMERS[3].turnOnHour = DEFAULT_TIMER_FEED_2;
+  RELAY_TIMERS[3].turnOnMinute = 00;
+  RELAY_TIMERS[3].turnOffHour = 00;
+  RELAY_TIMERS[3].turnOffMinute = 00;
+  RELAY_TIMERS[3].active = true;
+  
+  RELAY_TIMERS[4].relayIndex = index; //FEED 18h
+  RELAY_TIMERS[4].turnOnHour = DEFAULT_TIMER_FEED_3;
+  RELAY_TIMERS[4].turnOnMinute = 00;
+  RELAY_TIMERS[4].turnOffHour = 00;
+  RELAY_TIMERS[4].turnOffMinute = 00;
+  RELAY_TIMERS[4].active = true;
+
+  #if (DEBUG_MODE == true)
+    Serial.println(F("default timers set (factory reset):"));
+    printTimers();
+  #endif
+}
+
+
+
 
 //--------------------------------------------------------------------------------------------------
 //
@@ -1166,7 +1661,7 @@ void readData() {
     updateMeasure(_measuredWaterTemperature, _sensorWaterTemperature.getTempCByIndex(0));        
     
     #if (USE_HOME_ASSISTANT == true)       
-      sensorWaterTemp.setValue(_measuredWaterTemperature.valueEWMA);
+      sensorWaterTemp.setValue(_measuredWaterTemperature.average);
     #endif
 
   #else
@@ -1182,8 +1677,8 @@ void readData() {
     updateMeasure(_measuredAirHumidity, _sensorAirTemperature.readHumidity());
         
     #if (USE_HOME_ASSISTANT == true) 
-      sensorAirTemp.setValue(_measuredAirTemperature.valueEWMA);
-      sensorAirHumidity.setValue(_measuredAirHumidity.valueEWMA);
+      sensorAirTemp.setValue(_measuredAirTemperature.average);
+      sensorAirHumidity.setValue(_measuredAirHumidity.average);
     #endif
 
   #else
@@ -1202,7 +1697,7 @@ void readData() {
     updateMeasure(_measuredAirSealevelPressure, _sensorAirPresure.readSealevelPressure());
     
     #if (USE_HOME_ASSISTANT == true) 
-      sensorAirPressure.setValue(_measuredAirPressure.valueEWMA);
+      sensorAirPressure.setValue(_measuredAirPressure.average);
     #endif
 
   #else
@@ -1218,35 +1713,34 @@ bool readButtons() {
   //
   // reads buttons
   //
-  if (!USE_PUSH_BUTTONS)
-    // disable buttons
-    return false;  
-  
-  if (digitalRead(PUSH_BUTTON_TURN_OFF_PIN) == LOW) {
-    turnOff();
-    return true;
-  }
-  if (digitalRead(PUSH_BUTTON_RESTART_PIN) == LOW) {
-    restart();
-    return true;
-  }
-  if (digitalRead(PUSH_BUTTON_LIGHTS_PIN) == LOW) {
-    saveLightState(!_statusForceLights);
-    return true;
-  }
-  if (digitalRead(PUSH_BUTTON_PWC_ROUTINE_PIN) == LOW) {
-    runWaterParcialChangeRoutine();
-    return true;
-  }
-  if (digitalRead(PUSH_BUTTON_MANUAL_CLEANING_PIN) == LOW) {
-    runManualCleaning();
-    return true;
-  }
-  if (digitalRead(PUSH_BUTTON_FEEDING_PIN) == LOW) {
-    runManualCleaning();
-    // feed();
-    return true;
-  }
+  #if (USE_PUSH_BUTTONS == true)
+    
+    if (digitalRead(PUSH_BUTTON_TURN_OFF_PIN) == LOW) {
+      turnOff();
+      return true;
+    }
+    if (digitalRead(PUSH_BUTTON_RESTART_PIN) == LOW) {
+      restart();
+      return true;
+    }
+    if (digitalRead(PUSH_BUTTON_LIGHTS_PIN) == LOW) {
+      setRelay(RELAY_LIGHTS_PIN, true, false, true);
+      return true;
+    }
+    if (digitalRead(PUSH_BUTTON_PWC_ROUTINE_PIN) == LOW) {
+      runWaterParcialChangeRoutine();
+      return true;
+    }
+    if (digitalRead(PUSH_BUTTON_MANUAL_CLEANING_PIN) == LOW) {
+      runManualCleaning();
+      return true;
+    }
+    if (digitalRead(PUSH_BUTTON_FEEDING_PIN) == LOW) {
+      feed();
+      return true;
+    }
+
+  #endif
 
   // no button pressed
   return false;
@@ -1315,12 +1809,12 @@ void showAirTemperature1() {
   //
   #if (DEBUG_MODE == true)    
     Serial.print(TEXT_AIR_TEMPERATURE);
-    Serial.print(_measuredAirTemperature.value);
-    Serial.println(str_unit_temperature);
+    printMeasure(_measuredAirTemperature);
+
     Serial.print(TEXT_AIR_HUMIDITY);
-    Serial.print(_measuredAirHumidity.value, 0);
-    Serial.print(F("%"));
+    printMeasure(_measuredAirHumidity);
   #endif
+
   #if (USE_LCD_DISPLAY == true)
     _lcd.setCursor(0, 0);
     _lcd.print(TEXT_AIR_TEMPERATURE);
@@ -1339,21 +1833,21 @@ void showAirTemperature2() {
   //
   #if (DEBUG_MODE == true)    
     Serial.print(TEXT_AIR_PRESSURE);
-    Serial.print(_measuredAirPressure.valueEWMA / 100, 0);
-    Serial.println(F("mPa"));
+    printMeasure(_measuredAirPressure);
+
     Serial.print(TEXT_ALTITUDE);
-    Serial.print(_measuredAirAltitude.valueEWMA, 0);
-    Serial.print(F("m"));
+    printMeasure(_measuredAirAltitude);
   #endif
+
   #if (USE_LCD_DISPLAY == true)
     _lcd.setCursor(0, 0);
     _lcd.print(TEXT_AIR_PRESSURE);
-    _lcd.print(_measuredAirPressure.valueEWMA / 100, 0);
+    _lcd.print(_measuredAirPressure.value / 100, 0);
     _lcd.print(F("mPa"));
     
     _lcd.setCursor(0, 1);
     _lcd.print(TEXT_ALTITUDE);
-    _lcd.print(_measuredAirAltitude.valueEWMA, 0);
+    _lcd.print(_measuredAirAltitude.average, 0);
     _lcd.print(F("m"));
   #endif
 }
@@ -1370,7 +1864,7 @@ void showLocalWeatherForecast() {
       // debug
       //
       Serial.print(TEXT_LOCAL_FORECAST);
-      switch(forecast){
+      switch (forecast) {
         case WEATHER_CODE_GOOD:
           Serial.println(TEXT_WEATHER_GOOD);
           break;
@@ -1405,7 +1899,7 @@ void showLocalWeatherForecast() {
       _lcd.setCursor(0, 0);
       _lcd.print(TEXT_LOCAL_FORECAST);
       _lcd.setCursor(0, 1);
-      switch(forecast){
+      switch (forecast) {
         case WEATHER_CODE_GOOD:
           _lcd.print(TEXT_WEATHER_GOOD);
           break;
@@ -1439,8 +1933,13 @@ void showLocalWeatherForecast() {
 void showWaterTemperature(int idx) {
   //
   // Shows temperature
-  //
-  #if (USE_LCD_DISPLAY)
+  //  
+  #if (DEBUG_MODE == true)
+    Serial.print(TEXT_WATER_TEMPERATURE);
+    printMeasure(_measuredWaterTemperature);
+  #endif
+
+  #if (USE_LCD_DISPLAY == true)
     _lcd.setCursor(0, 0);
     _lcd.print(TEXT_WATER_TEMPERATURE);
     _lcd.print(_measuredWaterTemperature.value);
@@ -1449,15 +1948,15 @@ void showWaterTemperature(int idx) {
     switch (idx) {
       case 1:
         _lcd.print(TEXT_MIN);
-        _lcd.print(_measuredWaterTemperature.valueMin);
+        _lcd.print(_measuredWaterTemperature.min);
         break;
       case 2:
         _lcd.print(TEXT_MAX);
-        _lcd.print(_measuredWaterTemperature.valueMax);
+        _lcd.print(_measuredWaterTemperature.max);
         break;
       case 3:
         _lcd.print(TEXT_AVG);
-        _lcd.print(_measuredWaterTemperature.valueEWMA);
+        _lcd.print(_measuredWaterTemperature.average);
         break;
     }
     _lcd.print(F("C"));
@@ -1468,30 +1967,46 @@ void showWaterPh() {
   //
   // Shows Ph
   //
+  #if (DEBUG_MODE == true)
+    Serial.print(TEXT_WATER_PH);
+    printMeasure(_measuredWaterPh);
+  #endif
+
   #if (USE_LCD_DISPLAY)
     _lcd.setCursor(0, 0);
     _lcd.print(TEXT_WATER_PH);
-    _lcd.print(_measuredWaterPh.valueEWMA);
+    _lcd.print(_measuredWaterPh.value);
     _lcd.setCursor(0, 1);
     _lcd.print(F("Alcalin: 120 ppm"));
-  #endif
+  #endif  
 }
 
 void showSystemFlags() {
   //
   // Shows system flags
   //
-  #if (USE_LCD_DISPLAY)
+  unsigned int index = getRelayIndexByPin(RELAY_LIGHTS_PIN);
+  bool lightsForcedOn = RELAY_FORCED_TURN_ON[index];
+
+  index = getRelayIndexByPin(RELAY_FEEDER_PIN);
+  bool feedForcedOn = RELAY_FORCED_TURN_ON[index];
+
+  #if (DEBUG_MODE == true)
+    Serial.print(TEXT_LIGHTS);
+    Serial.println((lightsForcedOn ? TEXT_ON : TEXT_TIMER));
+    
+    Serial.print(TEXT_FEED);
+    Serial.println((feedForcedOn ? TEXT_FEED : TEXT_OFF)); 
+  #endif 
+
+  #if (USE_LCD_DISPLAY == true)
     _lcd.setCursor(0, 0);
     _lcd.print(TEXT_LIGHTS);
-    if (_statusForceLights)
-      _lcd.print(TEXT_ON);
-    else
-      _lcd.print(TEXT_TIMER);
+    _lcd.print((lightsForcedOn ? TEXT_ON : TEXT_TIMER));
 
     _lcd.setCursor(0, 1);
-    _lcd.print(TEXT_FEED);  
-    _lcd.print(TEXT_OFF);
+    _lcd.print(TEXT_FEED);
+    _lcd.print((feedForcedOn ? TEXT_TIMER : TEXT_OFF)); 
   #endif  
 }
 
@@ -1505,61 +2020,61 @@ unsigned int getStandaloneWeatherForecast(){
   //
   // gets standalone weather forecast
   //
-  if (_measuredAirPressure.valueMax - _measuredAirPressure.valueEWMA >= 600)  
+  if (_measuredAirPressure.max - _measuredAirPressure.average >= 600)  
     return WEATHER_CODE_NO_FORECAST;
 
-  if (_measuredAirPressure.valueMax - _measuredAirPressure.valueEWMA >= 550 
-    && _measuredAirPressure.valueMax - _measuredAirPressure.valueEWMA <= 599) 
+  if (_measuredAirPressure.max - _measuredAirPressure.average >= 550 
+    && _measuredAirPressure.max - _measuredAirPressure.average <= 599) 
     return WEATHER_CODE_GOOD;
   
-  if (_measuredAirPressure.valueMax - _measuredAirPressure.valueEWMA >= 500 
-    && _measuredAirPressure.valueMax - _measuredAirPressure.valueEWMA <= 549) 
+  if (_measuredAirPressure.max - _measuredAirPressure.average >= 500 
+    && _measuredAirPressure.max - _measuredAirPressure.average <= 549) 
     return WEATHER_CODE_GOOD;
   
-  if (_measuredAirPressure.valueMax - _measuredAirPressure.valueEWMA >= 450 
-    && _measuredAirPressure.valueMax - _measuredAirPressure.valueEWMA <= 499) 
+  if (_measuredAirPressure.max - _measuredAirPressure.average >= 450 
+    && _measuredAirPressure.max - _measuredAirPressure.average <= 499) 
     return WEATHER_CODE_GOOD;
   
-  if (_measuredAirPressure.valueMax - _measuredAirPressure.valueEWMA >= 400 
-    && _measuredAirPressure.valueMax - _measuredAirPressure.valueEWMA <= 449) 
+  if (_measuredAirPressure.max - _measuredAirPressure.average >= 400 
+    && _measuredAirPressure.max - _measuredAirPressure.average <= 449) 
     return WEATHER_CODE_GOOD;
   
-  if (_measuredAirPressure.valueMax - _measuredAirPressure.valueEWMA >= 350 
-    && _measuredAirPressure.valueMax - _measuredAirPressure.valueEWMA <= 399) 
+  if (_measuredAirPressure.max - _measuredAirPressure.average >= 350 
+    && _measuredAirPressure.max - _measuredAirPressure.average <= 399) 
     return WEATHER_CODE_GOOD;
   
-  if (_measuredAirPressure.valueMax - _measuredAirPressure.valueEWMA >= 300 
-    && _measuredAirPressure.valueMax - _measuredAirPressure.valueEWMA <= 349) 
+  if (_measuredAirPressure.max - _measuredAirPressure.average >= 300 
+    && _measuredAirPressure.max - _measuredAirPressure.average <= 349) 
     return WEATHER_CODE_GOOD;
   
-  if (_measuredAirPressure.valueMax - _measuredAirPressure.valueEWMA >= 200 
-    && _measuredAirPressure.valueMax - _measuredAirPressure.valueEWMA <= 299) 
+  if (_measuredAirPressure.max - _measuredAirPressure.average >= 200 
+    && _measuredAirPressure.max - _measuredAirPressure.average <= 299) 
     return WEATHER_CODE_DRY;
 
-  if (_measuredAirPressure.valueMax - _measuredAirPressure.valueEWMA >= 100 
-    && _measuredAirPressure.valueMax - _measuredAirPressure.valueEWMA <= 199) 
+  if (_measuredAirPressure.max - _measuredAirPressure.average >= 100 
+    && _measuredAirPressure.max - _measuredAirPressure.average <= 199) 
     return WEATHER_CODE_NO_CHANGES;
 
-  if (_measuredAirPressure.valueMax - _measuredAirPressure.valueMin >= 200 
-    && _measuredAirPressure.valueEWMA - _measuredAirPressure.valueMin <= 299) 
+  if (_measuredAirPressure.max - _measuredAirPressure.min >= 200 
+    && _measuredAirPressure.average - _measuredAirPressure.min <= 299) 
     return WEATHER_CODE_LIGHT_RAIN;
 
-  if (_measuredAirPressure.valueMax - _measuredAirPressure.valueMin >= 300 
-    && _measuredAirPressure.valueEWMA - _measuredAirPressure.valueMin <= 399) 
+  if (_measuredAirPressure.max - _measuredAirPressure.min >= 300 
+    && _measuredAirPressure.average - _measuredAirPressure.min <= 399) 
     return WEATHER_CODE_RAINING;
   
-  if (_measuredAirPressure.valueMax - _measuredAirPressure.valueMin >= 400 
-    && _measuredAirPressure.valueEWMA - _measuredAirPressure.valueMin <= 499) 
+  if (_measuredAirPressure.max - _measuredAirPressure.min >= 400 
+    && _measuredAirPressure.average - _measuredAirPressure.min <= 499) 
     return WEATHER_CODE_HEAVY_RAIN;
   
-  if (_measuredAirPressure.valueMax - _measuredAirPressure.valueMin >= 500 
-    && _measuredAirPressure.valueEWMA - _measuredAirPressure.valueMin <= 599) 
+  if (_measuredAirPressure.max - _measuredAirPressure.min >= 500 
+    && _measuredAirPressure.average - _measuredAirPressure.min <= 599) 
     return WEATHER_CODE_TUNDERSTORM;
   
-  if (_measuredAirPressure.valueMax - _measuredAirPressure.valueMin >= 600)  
+  if (_measuredAirPressure.max - _measuredAirPressure.min >= 600)  
     return WEATHER_CODE_NO_FORECAST;
   
-  if (_measuredAirHumidity.valueEWMA < 30)
+  if (_measuredAirHumidity.average < 30)
     return WEATHER_CODE_DRY;
 
   return WEATHER_CODE_NO_FORECAST;
@@ -1572,37 +2087,345 @@ unsigned int getStandaloneWeatherForecast(){
 //--------------------------------------------------------------------------------------------------
 #if (USE_STANDALONE_TIMERS == true)
 
-  void handleTimers()
-  {
+  // void handleTimers()
+  // {
+  //   //
+  //   // Handle scheduled tasks actions
+  //   //    
+  //   if (_status < STATUS_CYCLE_OFF) {
+  //     int hour = _now.hour();
+
+  //     // lights timer, set LOW to turn on lights
+  //     bool lightOnTimer = hour > _timerLightStart && hour < _timerLightEnd ;
+  //     setRelay(RELAY_LIGHTS_PIN, lightOnTimer || _isLightsOnForced);
+
+  //     // UV timer (8h), set LOW to turn on UV lamp)
+  //     setRelay(RELAY_FILTER_UV_PIN, hour > _timerUvStart && hour < _timerUvEnd);
+
+  //     // Feeding timer: 7, 12 and 18h
+  //     if (hour == _timerFeed1 || hour == _timerFeed2 || hour == _timerFeed3) {
+  //       if (!_statusFeeded)
+  //         feed();
+  //     }
+  //     else
+  //       _statusFeeded = false;
+  //   }
+  //   else
+  //   {
+  //     // non usual mode: just ensures UV turn off
+  //     setRelay(RELAY_FILTER_UV_PIN, false);
+  //   }
+  // }
+
+  void runTimers() {
     //
-    // Handle scheduled tasks actions
-    //    
-    if (_status < STATUS_CYCLE_OFF) {
-      int hour = _now.hour();
+    // execute the standalone timers
+    //  
+    if (!_isTimersEnabled)
+      // nothing to do!
+      return;
 
-      // lights timer, set LOW to turn on lights
-      bool lightOnTimer = hour > _timerLightStart && hour < _timerLightEnd ;
-      digitalWrite(RELAY_LIGHTS_PIN, !(lightOnTimer || _statusForceLights));
-
-      // UV timer (8h), set LOW to turn on UV lamp)
-      digitalWrite(RELAY_FILTER_UV_PIN, !(hour > _timerUvStart && hour < _timerUvEnd));
-
-      // Feeding timer: 7, 12 and 18h
-      if (hour == _timerFeed1 || hour == _timerFeed2 || hour == _timerFeed3) {
-        if (!_statusFeeded)
-          feed();
-      }
-      else
-        _statusFeeded = false;
-    }
-    else
-    {
+    if (_status >= STATUS_CYCLE_OFF) {
       // non usual mode: just ensures UV turn off
-      digitalWrite(RELAY_FILTER_UV_PIN, HIGH);
+      setRelay(RELAY_FILTER_UV_PIN, false);
+      return;
+    }
+
+    #if (USE_RTC_CLOCK == true)
+      if (_clock.lostPower()) {
+        // could not check timers without clock time!!!
+        #if (DEBUG_MODE == true) 
+          Serial.println(F("WARNING: unreliable RTC (lost power status) checking timers"));
+        #endif
+        return;
+      }
+      DateTime now = _clock.now();
+    #else
+      #if (DEBUG_MODE == true) 
+        // DEBUG ONLY
+        Serial.println(F(" - checking timers - "));
+        DateTime now = DateTime(2023, 9, 1, 6, 1, 9);  
+      #else
+        // nothing to do!
+        return;
+      #endif
+    #endif
+        
+    for (unsigned int i = 0; i < TIMERS_SIZE; i++) {    
+      // for each timer, check if its enabled, active and valid
+      if (RELAY_TIMERS[i].enabled 
+        && RELAY_TIMERS[i].active 
+        && is_valid_timer(RELAY_TIMERS[i])) {
+
+        // retrives relay index
+        unsigned int relay_index = RELAY_TIMERS[i].relayIndex;
+        // checks if the relay should be on
+        bool shouldBeOn = checkInRange(now, RELAY_TIMERS[i]) || RELAY_FORCED_TURN_ON[relay_index];
+        
+        if (!RELAY_STATES[relay_index] && shouldBeOn){
+          // turns on relay (should be on and is currently off)
+          setRelay(relay_index, true, true);
+          //updateStates();
+
+        } else if (RELAY_STATES[relay_index] && !shouldBeOn){
+          // turns off relay (should be off and is currently on)
+          setRelay(relay_index, false, true);
+          //updateStates();
+        }
+      }
     }
   }
 
+  bool checkInRange(const DateTime& now, const timer& t){
+    //
+    // returns True if the specified time is between timer "turn on" window
+    //
+    unsigned int hour = now.hour(); 
+    // checks if specified is inside timer "hour" range
+    //
+    // "same day" timer, eg:
+    //   - turn on:  07:00 am
+    //   - current:  08:00 am (inside range)
+    //   - turn off: 10:00 am
+    // "next day" timer, eg:
+    //   - turn on:  20:00 pm
+    //   - current:  23:00 pm (inside range)
+    //   - turn off: 05:00 am (next day)
+    //
+    if (hour < t.turnOnHour || hour > t.turnOffHour)
+      // out of "turn on" hours
+      return false;
+    
+    unsigned int minute = now.minute();
+    // checks if before initial minute
+    if (hour == t.turnOnHour && minute < t.turnOnMinute)
+      return false;
+
+    // checks if after final minute
+    if (hour == t.turnOffHour && minute >= t.turnOffMinute)
+      return false;
+
+    return true;
+  }
+
+  void cleanTimers() {
+    //
+    // reset all timers! 
+    //
+    for (unsigned int i = 0; i < TIMERS_SIZE; i++) {
+      RELAY_TIMERS[i].enabled = false;
+      RELAY_TIMERS[i].relayIndex = 0xFF;
+      RELAY_TIMERS[i].turnOnHour = 0x00;
+      RELAY_TIMERS[i].turnOnMinute = 0x00;
+      RELAY_TIMERS[i].turnOffHour = 0x00;
+      RELAY_TIMERS[i].turnOffMinute = 0x00;
+      RELAY_TIMERS[i].active = false;
+    }
+
+    #if (DEBUG_MODE == true) 
+      Serial.println(F("timers cleaned"));
+      printTimers();
+    #endif
+  }
+
+  unsigned int getTimersCount() {
+    //
+    // returns the number of active timers
+    //    
+    unsigned int count = 0;
+    for (unsigned int i = 0; i < TIMERS_SIZE; i++) {     
+      // for each timer, check if its active (and valid)
+      if (RELAY_TIMERS[i].active && is_valid_timer(RELAY_TIMERS[i]))
+        count++;
+    }
+
+    return count;
+  }
+
+  void enableTimer(unsigned int index) {
+    //
+    // enables timer
+    //
+    if (index >= TIMERS_SIZE || (RELAY_TIMERS[index].enabled && RELAY_TIMERS[index].active))
+      // invalid or already enabled    
+      return;
+
+    #if (DEBUG_MODE == true) 
+      Serial.print(F(" - Enabling timer: "));
+      Serial.println(index);    
+    #endif
+
+    RELAY_TIMERS[index].enabled = true;
+    RELAY_TIMERS[index].active = true;
+    saveTimers();
+  }
+
+
+void disableTimer(unsigned int index) {
+  //
+  // enables timer new timer
+  //
+  if (index >= TIMERS_SIZE || !RELAY_TIMERS[index].enabled)
+    // invalid or already disabled
+    return;
+
+  #if (DEBUG_MODE == true) 
+    Serial.print(F(" - Disabling timer: "));
+    Serial.println(index);
+  #endif
+
+  RELAY_TIMERS[index].enabled = false;
+  RELAY_TIMERS[index].active = true;
+  saveTimers();
+}
+
+
+void deleteTimer(unsigned int index) {
+  //
+  // enables timer new timer
+  //
+  if (index >= TIMERS_SIZE || !RELAY_TIMERS[index].active)
+    return;
+
+  #if (DEBUG_MODE == true) 
+    Serial.print(F(" - Deleting timer: "));
+    Serial.println(index);    
+  #endif
+
+  RELAY_TIMERS[index].active = false;
+  saveTimers();
+  loadTimers();
+}
+
+
+bool addTimer(unsigned int relayPin, const byte& hourOn, const byte& minuteOn, 
+  const byte& hourOff, const byte& minuteOff) {
+  //
+  // adds new timer
+  //
+  unsigned int relayIndex = getRelayIndexByPin(relayPin);
+  if ((hourOn == hourOff && minuteOn == minuteOff) || relayIndex >= RELAY_SIZE) {
+    #if (DEBUG_MODE == true) 
+      Serial.print(F("ERROR creating timer: invalid parameters!"));
+    #endif
+    return false;
+  }
+
+  for (unsigned int i = 0; i < TIMERS_SIZE; i++) {
+    if (!RELAY_TIMERS[i].active){
+      // adds on first free position
+      RELAY_TIMERS[i].enabled = true;
+      RELAY_TIMERS[i].relayIndex = (byte)relayIndex;
+      RELAY_TIMERS[i].turnOnHour = hourOn;
+      RELAY_TIMERS[i].turnOnMinute = minuteOn;
+      RELAY_TIMERS[i].turnOffHour = hourOff;
+      RELAY_TIMERS[i].turnOffMinute = minuteOff;
+      RELAY_TIMERS[i].active = true;
+      
+      // save changes
+      saveTimers();
+
+      #if (DEBUG_MODE == true) 
+        // debug only
+        Serial.print(F("new timer created "));
+        printTimer(RELAY_TIMERS[i], i);
+      #endif
+      return true;
+    }
+  }  
+
+  #if (DEBUG_MODE == true) 
+    Serial.print(F("could not save timer: no free space!"));
+  #endif
+  return false;
+}
+
+
+bool updateTimer(unsigned int timerId, const byte& hourOn, const byte& minuteOn, 
+  const byte& hourOff, const byte& minuteOff) {
+  //
+  // updates the specified timer
+  //
+  if (timerId >= TIMERS_SIZE || (hourOn == hourOff && minuteOn == minuteOff)){
+    #if (DEBUG_MODE == true) 
+      Serial.print(F("ERROR updating timer: invalid parameters!"));
+    #endif
+    return false;
+  }
+
+  #if (DEBUG_MODE == true) 
+    Serial.print(F("updating timer - id: "));
+    Serial.println(timerId);
+  
+    Serial.print(F("before "));
+    printTimer(RELAY_TIMERS[timerId], timerId);
+  #endif
+
+  RELAY_TIMERS[timerId].enabled = true;
+  RELAY_TIMERS[timerId].turnOnHour = hourOn;
+  RELAY_TIMERS[timerId].turnOnMinute = minuteOn;
+  RELAY_TIMERS[timerId].turnOffHour = hourOff;
+  RELAY_TIMERS[timerId].turnOffMinute = minuteOff;
+  RELAY_TIMERS[timerId].active = true;
+  saveTimers();
+
+  #if (DEBUG_MODE == true) 
+    Serial.print(F("after "));
+    printTimer(RELAY_TIMERS[timerId], timerId);
+  #endif
+
+  return true;
+}
+
+#if (DEBUG_MODE == true)
+    //
+    // debug only code
+    //
+
+    void printTimers(){
+      //
+      // print all timers
+      //
+      for(unsigned int i = 0; i < TIMERS_SIZE; i++) {
+        if (RELAY_TIMERS[i].active && is_valid_timer(RELAY_TIMERS[i]))
+          printTimer(RELAY_TIMERS[i], i);
+      }
+    }
+
+    void printTimer(const timer& timer, const unsigned int& idx){
+      //
+      // print timers
+      //
+      unsigned int relayPin = 0;
+      String relayName = String(TEXT_UNKNOW);
+      if (timer.relayIndex < RELAY_SIZE){
+          relayPin = RELAY_PINS[timer.relayIndex];
+          relayName = getRelayNameByPin(relayPin);
+      }
+      Serial.print(F(" - timer id: "));
+      Serial.print(idx);
+      Serial.print(F(" ["));
+      Serial.print(timer.enabled ? F("on") :  F("off"));
+      Serial.print(F("], relay: "));
+      Serial.print(relayName);
+      Serial.print(F("[idx: "));
+      Serial.print((unsigned int)timer.relayIndex);
+      Serial.print(F(", pin: "));
+      Serial.print(relayPin);
+      Serial.print(F("], timer on: "));
+      Serial.print((unsigned int)timer.turnOnHour);
+      Serial.print(F(":"));
+      Serial.print((unsigned int)timer.turnOnMinute);
+      Serial.print(F(", timer off: "));
+      Serial.print((unsigned int)timer.turnOffHour);
+      Serial.print(F(":"));
+      Serial.println((unsigned int)timer.turnOffMinute);
+    }
+
+  #endif
+
 #endif
+
 //--------------------------------------------------------------------------------------------------
 //
 // alarms
@@ -1613,9 +2436,9 @@ unsigned int getStandaloneWeatherForecast(){
   void handleAlarms()
   {
     //
-    // Take sensor alarm actions: change realys in response
+    // Take sensor alarm actions: changes states realys in proper response!!
     //
-    if(!USE_RELAYS || _status >= STATUS_CYCLE_OFF) 
+    if(_status >= STATUS_CYCLE_OFF) 
       // nothing to do: relays disabled or aquarioino turned off
       return;
     
@@ -1625,12 +2448,18 @@ unsigned int getStandaloneWeatherForecast(){
       // sump pump water level opened (false) -> alarm sump water level is low (true)
       //
       _waterSumpLevelLow = !digitalRead(SUMP_WATER_LOW_LEVEL_SENSOR_PIN); 
-      if (_debugNoWaterLevel){
-        // disable reposition pump
-        _waterSumpLevelLow = false;
-      }
-      // set pin=LOW to turn on repostion pump relay
-      digitalWrite(RELAY_WATER_REPOSITION_PUMP_PIN, !_waterSumpLevelLow);
+    #else
+      _waterSumpLevelLow = false;
+    #endif
+
+    #if (DEBUG_MODE == true) 
+      Serial.println(F("low water level at sump sensor - turning on water reposition pump (fresh water in)"));
+    #endif
+    
+    #if (USE_RELAYS == true) 
+      //the  water level on aquarium is low: turn on water reposition 
+      // pump (i.e., push some new water into aquarium)
+      setRelay(RELAY_WATER_REPOSITION_PUMP_PIN, _waterSumpLevelLow);
     #endif
 
     #if (USE_WATER_TEMPERATURE_SENSOR == true)
@@ -1639,51 +2468,86 @@ unsigned int getStandaloneWeatherForecast(){
       // set pin=LOW to turn on relay
       // if high temp (true) -> turn on cooler, turn of heater -> set cooler pin LOW, set heater pin HIGH 
       //
-      bool highTemp = _measuredWaterTemperature.value > _levelWaterTempMax;
-      digitalWrite(RELAY_COOLER_FAN_PIN, !highTemp);
-      digitalWrite(RELAY_HEATER_PIN, highTemp);
+      bool highTemp = _measuredWaterTemperature.value > _alarmBoundWaterTemperatureMax;      
+    #else
+      bool highTemp = false;
+    #endif
+    
+    #if (DEBUG_MODE == true) 
+      Serial.println(F("high temperature - turning on cooler fan and turning off heater"));
+    #endif
+
+    #if (USE_RELAYS == true)     
+      // too hot: turns on cooler and turns off heater
+      setRelay(RELAY_COOLER_FAN_PIN, highTemp);
+      setRelay(RELAY_HEATER_PIN, !highTemp);
     #endif
   }
 
-  void showAlarms()
-  {
+  void showAlarms() {
     //
     // shows alarms (second LCD display line)
     //
-    if(ENABLE_SENSOR_ALARMS) {
-      // disable alarms
-      return;
-    }
-
     if (_status < STATUS_CYCLE_OFF ) {
-      
-      _lcd.setCursor(0, 1);  
-      if (_waterSumpLevelLow && !_debugNoWaterLevel) {
-        // low level alarm
-        _lcd.print(TEXT_ALARM_LOW_WATER_LEVEL);
-      }
-      else if (_measuredWaterTemperature.value > _levelWaterTempMax) {
-        // temperature alarms
-        _lcd.print(TEXT_ALARM_HIGH_TEMPERATURE);
-        _lcd.print(_measuredWaterTemperature.value);
-        _lcd.print(F("C"));
-      }
-      else if (_measuredWaterTemperature.value < _levelWaterTempMin) {
-        // temperature alarms
-        _lcd.print(TEXT_ALARM_LOW_TEMPERATURE);
-        _lcd.print(_measuredWaterTemperature.value);
-        _lcd.print(F("C"));
-      }
-      else if (_measuredWaterPh.value < _levelWaterPhMin) {
-        // pH alarms
-        _lcd.print(TEXT_ALARM_LOW_PH);
-        _lcd.print(_measuredWaterPh.value);
-      }  
-      else if (_measuredWaterPh.value > _levelWaterPhMax) {
-        // pH alarms
-        _lcd.print(TEXT_ALARM_HIGH_PH);
-        _lcd.print(_measuredWaterPh.value);
-      }
+
+        #if (DEBUG_MODE == true)  
+        // display alarms (in priority order)  
+        if (_waterSumpLevelLow && USE_WATER_LEVEL_SENSORS) {
+          // low level alarm
+          Serial.print(F("ALARM: low water level: "));
+        }
+        else if (_measuredWaterTemperature.value > _alarmBoundWaterTemperatureMax) {
+          // temperature alarms: high
+          Serial.print(F("ALARM: high water temperature: "));
+          printMeasure(_measuredWaterTemperature);
+        }
+        else if (_measuredWaterTemperature.value < _alarmBoundWaterTemperatureMin) {
+          // temperature alarms: low
+          Serial.print(F("ALARM: low water temperature: "));
+          printMeasure(_measuredWaterTemperature);
+        }
+        else if (_measuredWaterPh.value < _alarmBoundWaterPhMin) {
+          // pH alarms: low
+          Serial.print(F("ALARM: low pH: "));
+          printMeasure(_measuredWaterPh);
+        }  
+        else if (_measuredWaterPh.value > _alarmBoundWaterPhMax) {
+          // pH alarms: high
+          Serial.print(F("ALARM: high pH: "));
+          printMeasure(_measuredWaterPh);
+        }
+      #endif
+
+      #if (USE_LCD_DISPLAY == true)  
+        _lcd.setCursor(0, 1);
+        // display alarms (in priority order)  
+        if (_waterSumpLevelLow && USE_WATER_LEVEL_SENSORS) {
+          // low level alarm
+          _lcd.print(TEXT_ALARM_LOW_WATER_LEVEL);
+        }
+        else if (_measuredWaterTemperature.value > _alarmBoundWaterTemperatureMax) {
+          // temperature alarms: high
+          _lcd.print(TEXT_ALARM_HIGH_TEMPERATURE);
+          _lcd.print(_measuredWaterTemperature.value);
+          _lcd.print(F("C"));
+        }
+        else if (_measuredWaterTemperature.value < _alarmBoundWaterTemperatureMin) {
+          // temperature alarms: low
+          _lcd.print(TEXT_ALARM_LOW_TEMPERATURE);
+          _lcd.print(_measuredWaterTemperature.value);
+          _lcd.print(F("C"));
+        }
+        else if (_measuredWaterPh.value < _alarmBoundWaterPhMin) {
+          // pH alarms: low
+          _lcd.print(TEXT_ALARM_LOW_PH);
+          _lcd.print(_measuredWaterPh.value);
+        }  
+        else if (_measuredWaterPh.value > _alarmBoundWaterPhMax) {
+          // pH alarms: high
+          _lcd.print(TEXT_ALARM_HIGH_PH);
+          _lcd.print(_measuredWaterPh.value);
+        }
+      #endif
     
       delay(100);
     }
@@ -1694,32 +2558,53 @@ unsigned int getStandaloneWeatherForecast(){
 // feeding
 //
 //--------------------------------------------------------------------------------------------------
-void feed()
-{
+void feed() {  
   //
-  // Feeding procedure (deprecated)
+  // Feeding procedure
   //
-  if (!ENABLE_FEEDING_TIMER && !USE_RELAYS) 
-    return;
+  #if (ENABLE_FEEDING_TIMER && USE_RELAYS)     
   
-  // set pin=LOW to turn on relay
-  digitalWrite(RELAY_EXTRA_PIN, HIGH);
-  delay(100);
-  digitalWrite(RELAY_EXTRA_PIN, LOW);
-  delay(500);
-  digitalWrite(RELAY_EXTRA_PIN, HIGH);
-  delay(500);
-  _statusFeeded = true;
+    #if (FEEDING_AS_PUSH_BUTTON == true)
+      //
+      // this configuration assumes to control an external feeder (Boyu - that I already have), 
+      // connect the "feed" push button (both terminals) of the external feeder to the 
+      // normally open relay RELAY_FEEDER_PIN. Therefore the relay can simulate an user button 
+      // press.
+      //         
+      unsigned int index = getRelayIndexByPin(RELAY_FEEDER_PIN);
+      // keeps state off
+      RELAY_STATES[index] = false;
+
+      digitalWrite(RELAY_FEEDER_PIN, HIGH);
+      delay(100);
+      
+      // set pin=LOW to turn on relay 
+      // (short circuit the Boyu feeder push button, simulating user pressing)
+      digitalWrite(RELAY_FEEDER_PIN, LOW);
+      delay(300);
+
+      digitalWrite(RELAY_FEEDER_PIN, HIGH);
+      delay(300);    
+    #else
+      //
+      // TODO: Uses a step motor as feeder
+      //
+
+
+    #endif
+    // flag for feed complete
+    _statusFeeded = true;
+
+  #endif
 }
 //--------------------------------------------------------------------------------------------------
 //
 // aquarium maintenance routines (WPC, manual cleaning)
 //
 //--------------------------------------------------------------------------------------------------
-void runWaterParcialChangeRoutine()
-{
+void runWaterParcialChangeRoutine() {
   //
-  // Auto TPA
+  // Auto Water Parcial Change
   //
   delay(1000);
   #if (USE_LCD_DISPLAY)
@@ -1729,14 +2614,16 @@ void runWaterParcialChangeRoutine()
   #endif 
   
   if (!setAquariumState(STATUS_CODE_EXECUTION_WATER_PARTIAL_CHANGE_ROUTINE))
+    // error setting state
     return; 
 
   //
-  // step 1 - drain dirty water (turn on drain pump)
+  // step 1 - drain dirty water (turn on drain pump - see docs above)
   //
   #if (DEBUG_MODE == true)
     Serial.println(TEXT_DRAINING_WATER);
   #endif 
+  
   #if (USE_LCD_DISPLAY == true)
     _lcd.setCursor(0, 1);
     _lcd.print(TEXT_DRAINING_WATER);
@@ -1745,7 +2632,8 @@ void runWaterParcialChangeRoutine()
 
   #if (USE_RELAYS == true)
     // turn off all (keep only lights on)
-    setAllRelays(false, 0); 
+    unsigned int light_index = getRelayIndexByPin(RELAY_LIGHTS_PIN);
+    setAllRelays(false, light_index, true); 
     delay(1000);
 
     setRelay(RELAY_DRAIN_PUMP_PIN, true);
@@ -1753,6 +2641,7 @@ void runWaterParcialChangeRoutine()
       // while not reach drain level low => keep draining dirty water
       delay(500);
     }
+
     // turn of drain pump (water is at low drained level) 
     setRelay(RELAY_DRAIN_PUMP_PIN, false);
     delay(1000);
@@ -1776,6 +2665,7 @@ void runWaterParcialChangeRoutine()
   #if (DEBUG_MODE == true)
     Serial.println(TEXT_DRAINING_WATER);
   #endif 
+
   #if (USE_LCD_DISPLAY == true)
     _lcd.setCursor(0, 1);
     _lcd.print(TEXT_REPLACING_WATER);
@@ -1788,6 +2678,7 @@ void runWaterParcialChangeRoutine()
       // while not reach sump level high => keep reposition pump on
       delay(500);
     }
+
     // turn of reposition pump (water flows to sump)
     setRelay(RELAY_WATER_REPOSITION_PUMP_PIN, false);
     delay(1000);
@@ -1799,6 +2690,7 @@ void runWaterParcialChangeRoutine()
   #if (DEBUG_MODE == true)
     Serial.println(TEXT_CHECKING);
   #endif 
+
   #if (USE_LCD_DISPLAY == true)
     _lcd.setCursor(0, 1);
     _lcd.print(TEXT_CHECKING);
@@ -1816,6 +2708,7 @@ void runWaterParcialChangeRoutine()
       setRelay(RELAY_WATER_REPOSITION_PUMP_PIN, true);
       delay(500);
     }
+
     // turn off both pumps
     setRelay(RELAY_WATER_REPOSITION_PUMP_PIN, false);
     setRelay(RELAY_DRAIN_PUMP_PIN, false);
@@ -1824,14 +2717,17 @@ void runWaterParcialChangeRoutine()
   #if (DEBUG_MODE == true)
     Serial.println(TEXT_PWC_FINISHED);
   #endif 
+
   #if (USE_LCD_DISPLAY == true)
     _lcd.setCursor(0, 1);
     _lcd.print(TEXT_PWC_FINISHED);
     delay(5000);
   #endif
   
+  // restart the display cycle
   restart();
 }
+
 
 void runManualCleaning() {
   //
@@ -1846,11 +2742,13 @@ void runManualCleaning() {
   #endif  
   
   if (!setAquariumState(STATUS_CODE_MANUAL_CLEANING))
+    // error on changing aquarium state
     return; 
   
   #if (USE_RELAYS == true)
-    // turn off all (only lights on)
-    setAllRelays(false, 0);
+    // turn off all relays (only lights relay keeps on)
+    unsigned int light_index = getRelayIndexByPin(RELAY_LIGHTS_PIN);
+    setAllRelays(false, light_index, true);
     delay(1000);    
   #endif
 }
@@ -1859,9 +2757,8 @@ void turnOff() {
   //
   // turns off aquarioino
   //
-  delay(1000);
-  
-  _statusForceLights = false;
+  delay(1000);  
+
   #if (USE_LCD_DISPLAY == true)
     _lcd.setCursor(0, 0);
     _lcd.print(TEXT_TURN_OFF);  
@@ -1870,11 +2767,16 @@ void turnOff() {
   
   // set status OFF  
   if (!setAquariumState(STATUS_CODE_TURNED_OFF))
+    // error on changing aquarium state
     return; 
 
   #if (USE_RELAYS == true)  
-    // turn off all (only lights on)
-    setAllRelays(false, 0);
+    for(unsigned int i = 0; i < RELAY_SIZE; i++)
+      RELAY_FORCED_TURN_ON[i] = false;
+
+    // turn off all relays (only lights relay keeps on)
+    unsigned int light_index = getRelayIndexByPin(RELAY_LIGHTS_PIN);
+    setAllRelays(false, light_index, true);
     delay(1000);
   #endif
 }
@@ -1885,7 +2787,6 @@ void restart() {
   // restarts aquarium
   //
   delay(1000);
-  _statusForceLights = false;
   setAquariumState(STATUS_CYCLE_START);
   
   #if (USE_LCD_DISPLAY == true)
@@ -1895,17 +2796,23 @@ void restart() {
     delay(1000);
   #endif
   
-  #if (USE_RELAYS == true)
+  #if (USE_RELAYS == true)    
+    //
     // default: turn on heater, lights and sump pump!
+    //
     setRelay(RELAY_HEATER_PIN, true);
     setRelay(RELAY_LIGHTS_PIN, true);
     setRelay(RELAY_SUMP_PUMP_PIN, true);
     setRelay(RELAY_FILTER_UV_PIN, false);
-    setRelay(RELAY_DRAIN_PUMP_PIN, false);
-    setRelay(RELAY_EXTRA_PIN, false);  
+    setRelay(RELAY_DRAIN_PUMP_PIN, false);    
     setRelay(RELAY_COOLER_FAN_PIN, false);
     setRelay(RELAY_WATER_REPOSITION_PUMP_PIN, false);  
-    delay(100);
+    #if (FEEDING_AS_PUSH_BUTTON == true)
+      digitalWrite(RELAY_FEEDER_PIN, HIGH);      
+    #else
+      setRelay(RELAY_FEEDER_PIN, false); 
+    #endif
+    delay(100);    
   #endif
 }
 
@@ -1946,68 +2853,34 @@ void restart() {
   void onMessage(const char* topic, const uint8_t* payload, uint16_t length) {
     //
     // device receives an MQTT message
-    // 
-
+    //
     if (strcmp(topic, MQTT_TIME_SYNC_TOPIC) == 0) {  
       //
       // Date & time syncronization message from home assistant      
+      // topic: ha/datetime
       // message format: "dd MM yyyy hh mm ss"
       //
-      String message = String((const char*)payload);
-      #if (DEBUG_MODE == true)
-        Serial.print(F("Time sync: "));
-        Serial.println(message);
-      #endif 
-      
-      unsigned int day = message.substring(0,2).toInt();   // dd [01-31]
-      unsigned int month = message.substring(3,5).toInt();   // MM [01-12]
-      unsigned int year =message.substring(8,10).toInt();  // yy [00-99]
-      unsigned int hour = 2000 + message.substring(11,13).toInt(); // hh [00-23]
-      unsigned int minute = message.substring(14,16).toInt(); // mm [00-59]
-      unsigned int second = message.substring(17,19).toInt(); // ss [00-59]
-
-      #if (DEBUG_MODE == true)
-        Serial.print(F("day: "));
-        Serial.print(day);
-        Serial.print(F(", month: "));
-        Serial.print(month);
-        Serial.print(F(", year: "));
-        Serial.print(year);
-        Serial.print(F(", hour: "));
-        Serial.print(hour);
-        Serial.print(F(", minute: "));
-        Serial.print(minute);
-        Serial.print(F(", second: "));
-        Serial.println(second);
-      #endif 
-
-      if (day == 0 || month == 0 || year == 2000)
-        // something is wrong!
-        return;
-        
-      DateTime now = _clock.now();  
-      if (_clock.lostPower() || now.day() != day || now.month() != month || now.year() != year 
-        || now.hour() != hour || now.minute() != minute) {      
-        _clock.adjust(DateTime(year, month, day, hour, minute, second));
-        delay(100);
-      }
+      syncronizeTime(String((const char*)payload));
       return;
     }
 
     if (strcmp(topic, MQTT_COMMAND_TOPIC) == 0) {
       //
-      // Date & time syncronization message from home assistant
+      // commmand topic message
+      // topic: aquarioino/cmd
       //
+      executeMqttCommand(String((const char*)payload));
       return;
     }
   }
 
   void onLightStateCommand(bool state, HALight* sender) {
     //
-    // MQTT light switch state handler
+    // MQTT light state handler
     //    
-    if (sender == &chkLightSwitch)
-      setRelay(RELAY_LIGHTS_PIN, state);
+    if (sender == &chkLightSwitch){
+      setRelay(RELAY_LIGHTS_PIN, state, false, true);
+    }
   }
 
   void onSwitchCommand(bool state, HASwitch* sender){
@@ -2015,14 +2888,15 @@ void restart() {
     // MQTT switches handler
     //    
     if (sender == &chkFilterSwitch)
-      setRelay(RELAY_FILTER_UV_PIN, state);      
+      setRelay(RELAY_FILTER_UV_PIN, state, false, true);      
     else if (sender == &chkHeaterSwitch)
-      setRelay(RELAY_HEATER_PIN, state);
+      setRelay(RELAY_HEATER_PIN, state, false, true);
     else if (sender == &chkCoolerSwitch)
-      setRelay(RELAY_COOLER_FAN_PIN, state);      
+      setRelay(RELAY_COOLER_FAN_PIN, state, false, true);      
     else if (sender == &chkTimersSwitch) {
-
+      _isTimersEnabled = state;
       sender->setState(state); // report state back to the Home Assistant
+      sendStatesMessage();
     }        
   }
 
@@ -2040,38 +2914,46 @@ void restart() {
         runWaterParcialChangeRoutine();
     else if (sender == &btnFeed)
         feed();
+    else if (sender == &btnSave)
+        saveConfigurations();
   }
 
   void onNumberChange(HANumeric value, HANumber* sender) {
     //
-    // MQTT numeric reference values
+    // MQTT numeric reference values handler
     //
     if (sender == &lblTemperatureMin) {        
-        _levelWaterTempMin = value.toFloat();     
+        _alarmBoundWaterTemperatureMin = value.toFloat();     
     }
     else if (sender == &lblTemperatureMax) {        
-        _levelWaterTempMax = value.toFloat();
+        _alarmBoundWaterTemperatureMax = value.toFloat();
     }
     else if (sender == &lblPhMax) {        
-        _levelWaterPhMax = value.toFloat();
+        _alarmBoundWaterPhMax = value.toFloat();
     }
     else if (sender == &lblPhMin) {        
-        _levelWaterPhMin = value.toFloat();
+        _alarmBoundWaterPhMin = value.toFloat();
     }
     sender->setState(value);
   }
 
   String toStr(const bool& value){
+    //
+    // returns bool as String ("on"/"off")
+    //
     return (value ? String(F("on")) : String(F("off")));
   }
 
   String toStr(const measure& measure, const String& label){
+    //
+    // returns measure as String
+    //
     String json = String(F("\"[LABEL]\": [VALUE], \"[LABEL]_max\": [MAX], \"[LABEL]_min\": [MIN], \"[LABEL]_avg\": [AVG], "));
     json.replace(F("[LABEL]"), label);
     json.replace(F("[VALUE]"), String(measure.value, 1));
-    json.replace(F("[AVG]"), String(measure.valueEWMA, 1));
-    json.replace(F("[MAX]"), String(measure.valueMax, 1));
-    json.replace(F("[MIN]"), String(measure.valueMin, 1));
+    json.replace(F("[AVG]"), String(measure.average, 1));
+    json.replace(F("[MAX]"), String(measure.max, 1));
+    json.replace(F("[MIN]"), String(measure.min, 1));
     return json;
   }
     
@@ -2085,7 +2967,7 @@ void restart() {
     json += String(F("{"));
     
     // internal states
-    json += String(F("\"timer_enabled\":")) + toStr(_timersEnabled) + end;
+    json += String(F("\"timers_enabled\":")) + toStr(_isTimersEnabled) + end;
   
     // measurements
     json += toStr(_measuredWaterTemperature, F("temp"));
@@ -2095,127 +2977,354 @@ void restart() {
     json += toStr(_measuredAirPressure, F("pressure"));
     json += toStr(_measuredAirAltitude, F("altitude"));
     json += toStr(_measuredAirSealevelPressure, F("sealevel_pressure"));
-    
+
     // relays
-    // for (unsigned int i = 0; i < RELAY_SIZE; i++)
-    //   json += String(TEXT_RELAY_LIGHTS) + toStr(RELAY_STATES[0]) + end;    
-    
-    json += String(F("}"));
-    // const char*
+    json += String(F("\"relays\": {"));    
+    for (unsigned int i = 0; i < RELAY_SIZE; i++) {
+      unsigned int relayPin = RELAY_PINS[i];
+      String relayStateStr = F("\"[RELAY]\": \"[STATE]\", ");
+      relayStateStr.replace(F("[RELAY]"), getRelayNameByPin(relayPin));
+      relayStateStr.replace(F("[STATE]"), toStr(RELAY_STATES[i]));
+      json += relayStateStr;    
+    }          
+    // timers
+    json += String(F("}, \"timers\": {"));
+    for (unsigned int i = 0; i < TIMERS_SIZE; i++) {
+      if (RELAY_TIMERS[i].active && is_valid_timer(RELAY_TIMERS[i])) {
+        String timerStr = F("\"timer_[ID]\": {\"id\": \"[ID]\", \"enabled\": \"[ENABLED]\", \"relay\": \"[RELAY]\", \"turn on\": \"[HOUR_ON]:[MIN_ON]:00\", \"turn off\": \"[HOUR_OFF]:[MIN_OFF]:00\" }, ");
+        unsigned int relayIndex = RELAY_TIMERS[i].relayIndex;
+        unsigned int relayPin = RELAY_PINS[relayIndex];
+        String relayName = getRelayNameByPin(relayPin);
+        timerStr.replace(F("[ID]"), String(i));
+        timerStr.replace(F("[ENABLED]"), toStr(RELAY_TIMERS[i].enabled));
+        timerStr.replace(F("[RELAY]"), relayName);
+        timerStr.replace(F("[HOUR_ON]"), String(RELAY_TIMERS[i].turnOnHour));
+        timerStr.replace(F("[MINUTE_ON]"), String(RELAY_TIMERS[i].turnOnMinute));
+        timerStr.replace(F("[HOUR_OFF]"), String(RELAY_TIMERS[i].turnOffHour));
+        timerStr.replace(F("[MINUTE_OFF]"), String(RELAY_TIMERS[i].turnOffMinute));
+        json += timerStr;    
+      }
+    }
+
+    json += String(F("}}"));
+    //
+    // TODO: const char*
+    //
     mqtt.publish(MQTT_STATES_TOPIC, "test");
   }
+  
+  bool syncronizeTime(const String& message) {
+    //
+    // syncronizes RTC data & time with home assistant
+    //
+    // message format: "dd MM yyyy hh mm ss"
+    //
+    #if (DEBUG_MODE == true)
+      Serial.print(F("home assistant time sync: "));
+      Serial.println(message);
+    #endif 
+    
+    #if (USE_RTC_CLOCK == true)
+      // parse parameters
+      unsigned int day = message.substring(0,2).toInt();   // dd [01-31]
+      unsigned int month = message.substring(3,5).toInt();   // MM [01-12]
+      unsigned int year =message.substring(8,10).toInt();  // yy [00-99]
+      unsigned int hour = 2000 + message.substring(11,13).toInt(); // hh [00-23]
+      unsigned int minute = message.substring(14,16).toInt(); // mm [00-59]
+      unsigned int second = message.substring(17,19).toInt(); // ss [00-59]
 
+      #if (DEBUG_MODE == true)
+        // check parsing
+        Serial.print(F("day: "));
+        Serial.print(day);
+        Serial.print(F(", month: "));
+        Serial.print(month);
+        Serial.print(F(", year: "));
+        Serial.print(year);
+        Serial.print(F(", hour: "));
+        Serial.print(hour);
+        Serial.print(F(", minute: "));
+        Serial.print(minute);
+        Serial.print(F(", second: "));
+        Serial.println(second);
+      #endif 
+
+      if (day == 0 || month == 0 || year == 2000)
+        // something is wrong!
+        return false;
+        
+      DateTime now = _clock.now();  
+      if (_clock.lostPower() || now.day() != day || now.month() != month || now.year() != year 
+        || now.hour() != hour || now.minute() != minute) {      
+        _clock.adjust(DateTime(year, month, day, hour, minute, second));
+        delay(100);
+      }
+
+      return true;
+
+    #else
+      return false;
+    #endif    
+  }
 
   bool executeMqttCommand(const String& command){
     //
     // MQTT topic: aquarioino/cmd  
     //
+    #if (DEBUG_MODE == true)
+      Serial.print(F("executing mqtt command: "));
+      Serial.println(command);
+    #endif
+
     if (command == F("restart")){
       restart();
-      return;
+      return true;
     }
 
     if (command == F("off")){
       turnOff();
-      return;
+      return true;
     }
 
     if (command == F("wpc")){
       runWaterParcialChangeRoutine();
-      return;
+      return true;
     }
 
     if (command == F("manual")){
       runManualCleaning();
-      return;
+      return true;
     }
 
     if (command == F("save")){
       // save all on EEMPROM
-      return;
+      saveConfigurations(true);
+      return true;
     }
 
+    if (command == F("states")){
+      // publishes json states
+      sendStatesMessage();
+      return true;
+    }    
+
     if (command == F("relays on")){
-      // turn on all relays
-      setAllRelays(true);
+      // turn on all relays (forced)
+      setAllRelays(true, RELAY_SIZE, true);
+      return true;
     }
 
     if (command == F("relays off")){
-      // turn on all relays
-      setAllRelays(false);
+      // turn on all relays (forced)
+      setAllRelays(false, RELAY_SIZE, true);
+      return true;
     }
 
     if (command == F("enable timers")){
-      // enables timers
-      _timersEnabled = true;
-      return;
+      // enables timers (and saves it at EEPROM)
+      setTimersEnabled(true);
+      return true;
     }
     
     if (command == F("disable timers")){
-      // disables timers
-      _timersEnabled = false;
-      return;
+      // disables timers (and saves it at EEPROM)
+      setTimersEnabled(false);
+      return true;
     }
 
   if (command == F("delete all timers")){
     // deletes all timers
-    return;
+    #if (USE_STANDALONE_TIMERS == true)      
+      // clean timers
+      cleanTimers();
+      // saves (no timers)
+      saveTimers();
+      // disables timers
+      setTimersEnabled(false);
+      return true;
+    #else
+      return false;
+    #endif
   }
 
   if (command == F("default timers")){
-    // set default timers
-    return;
+    #if (USE_STANDALONE_TIMERS == true)
+      // loads default timers
+      loadDefaultTimers();   
+      // saves   
+      saveTimers();      
+      // enable timers
+      setTimersEnabled(true);
+      return true;
+    #else
+      return false;
+    #endif
   }
+
+  unsigned int relayPin;
+  unsigned int timerId;
+  unsigned int len = command.length();
 
   if (command.startsWith(F("turn on: "))){
     //
     // turn on: [light]
     //
-    if (command.endsWith(TEXT_RELAY_LIGHTS))
-      setRelay(RELAY_LIGHTS_PIN, true);
-    else if (command.endsWith(TEXT_RELAY_HEATER))
-      setRelay(RELAY_HEATER_PIN, true);
-    else if (command.endsWith(TEXT_RELAY_HEATER))
-      setRelay(RELAY_HEATER_PIN, true);
-    else if (command.endsWith(TEXT_RELAY_FILTER))
-      setRelay(RELAY_FILTER_UV_PIN, true);
-    else if (command.endsWith(TEXT_RELAY_COOLER))
-      setRelay(RELAY_COOLER_FAN_PIN, true);
-    else if (command.endsWith(TEXT_RELAY_SUMP_PUMP))
-      setRelay(RELAY_SUMP_PUMP_PIN, true);
-    else if (command.endsWith(TEXT_RELAY_DRAIN_PUMP))
-      setRelay(RELAY_DRAIN_PUMP_PIN, true);
-    else if (command.endsWith(TEXT_RELAY_REPOSITION_PUMP))
-      setRelay(RELAY_WATER_REPOSITION_PUMP_PIN, true);
-    else if (command.endsWith(TEXT_RELAY_EXTRA))
-      setRelay(RELAY_EXTRA_PIN, true);
-    return;
+    relayPin = getRelayPinByName(command);    
+    if (FEEDING_AS_PUSH_BUTTON && relayPin == RELAY_FEEDER_PIN)
+      // do not set feeder relay at "feed as push button" mode
+      return true;
+    
+    setRelay(relayPin, true, false, true);
+    return true;
   }
 
   if (command.startsWith(F("turn off: "))){
     //
     // turn off: [light]
     //
-    if (command.endsWith(TEXT_RELAY_LIGHTS))
-      setRelay(RELAY_LIGHTS_PIN, false);
-    else if (command.endsWith(TEXT_RELAY_HEATER))
-      setRelay(RELAY_HEATER_PIN, false);
-    else if (command.endsWith(TEXT_RELAY_HEATER))
-      setRelay(RELAY_HEATER_PIN, false);
-    else if (command.endsWith(TEXT_RELAY_FILTER))
-      setRelay(RELAY_FILTER_UV_PIN, false);
-    else if (command.endsWith(TEXT_RELAY_COOLER))
-      setRelay(RELAY_COOLER_FAN_PIN, false);
-    else if (command.endsWith(TEXT_RELAY_SUMP_PUMP))
-      setRelay(RELAY_SUMP_PUMP_PIN, false);
-    else if (command.endsWith(TEXT_RELAY_DRAIN_PUMP))
-      setRelay(RELAY_DRAIN_PUMP_PIN, false);
-    else if (command.endsWith(TEXT_RELAY_REPOSITION_PUMP))
-      setRelay(RELAY_WATER_REPOSITION_PUMP_PIN, false);
-    else if (command.endsWith(TEXT_RELAY_EXTRA))
-      setRelay(RELAY_EXTRA_PIN, false);
-    return;
+    relayPin = getRelayPinByName(command);
+    if (FEEDING_AS_PUSH_BUTTON && relayPin == RELAY_FEEDER_PIN)
+      // do not set feeder relay at "feed as push button" mode
+      return true;
+
+    setRelay(relayPin, false, false, true);
+    return true;
   }
+
+  if (command.startsWith(F("enable timer: ")) && len > 14){
+    //
+    // enables timer by "id"
+    // message format: "enable timer: 01"
+    //    
+    #if (DEBUG_MODE == true)
+      // checks if "timer id" was parsed correctly 
+      Serial.print(F("id: ["));
+      Serial.print(command.substring(14, len));
+      Serial.println(F("]"));
+    #endif
+    
+    timerId = command.substring(14, len).toInt();
+    enableTimer(timerId);
+    return true;
+  }
+
+  if (command.startsWith(F("disable timer: ")) && len > 15){
+    //
+    // disables timer by "id"
+    // message format: "disable timer: 01"
+    //
+    #if (DEBUG_MODE == true)
+      // checks if "timer id" was parsed correctly
+      Serial.print(F("id: ["));
+      Serial.print(command.substring(15, len));
+      Serial.println(F("]"));
+    #endif
+
+    timerId = command.substring(15, len).toInt();
+    disableTimer(timerId);
+    return true;
+  }
+
+  if (command.startsWith(F("delete timer: ")) && len > 14){
+    //
+    // deletes timer by "id"
+    // message format: "delete timer: 01"
+    //
+    #if (DEBUG_MODE == true)
+      // checks if "timer id" was parsed correctly
+      Serial.print(F("id: ["));
+      Serial.print(command.substring(14, len));
+      Serial.println(F("]"));
+    #endif
+    
+    timerId = command.substring(14, len).toInt();
+    deleteTimer(timerId);
+    return true;
+  }
+
+  byte hourTurnOn;
+  byte minuteTurnOn;
+  byte hourTurnOff;
+  byte minuteTurnOff;
+  String relayName;
+  if (command.startsWith(F("add timer: ")) && len > 23){
+    //
+    // creates new timer
+    // message format: "add timer: hh mm hh mm relay"
+    //
+    #if (DEBUG_MODE == true)
+      // checks parsing
+      Serial.print(F("h: ["));
+      Serial.print(command.substring(12, 14));
+      Serial.println(F("]"));
+
+      Serial.print(F("m: ["));
+      Serial.print(command.substring(15, 17));
+      Serial.println(F("]"));
+
+      Serial.print(F("h: ["));
+      Serial.print(command.substring(18, 20));
+      Serial.println(F("]"));
+
+      Serial.print(F("m: ["));
+      Serial.print(command.substring(21, 23));
+      Serial.println(F("]"));
+  
+      Serial.print(F("relay: ["));
+      Serial.print(command.substring(24, len));
+      Serial.println(F("]"));
+    #endif
+
+    // parse parameters
+    hourTurnOn = (byte)(command.substring(12, 14).toInt()); // turn on hour [0-23]
+    minuteTurnOn = (byte)(command.substring(15, 17).toInt()); // turn on minute [0-59]
+    hourTurnOff = (byte)(command.substring(18, 20).toInt()); // turn off hour [0-23]
+    minuteTurnOn = (byte)(command.substring(21, 23).toInt()); // turn off minute [0-59]
+    relayName = command.substring(24, len); // relay name [light]
+    relayPin = getRelayPinByName(relayName); // relay pin number
+
+    return addTimer(relayPin, hourTurnOn, minuteTurnOn, hourTurnOff, minuteTurnOff);
+  }
+
+  if (command.startsWith(F("update timer: ")) && len == 28){
+    //
+    // creates new timer
+    // message format: "update timer: id hh mm hh mm"
+    //
+    #if (DEBUG_MODE == true)      
+      // checks parsing
+      Serial.print(F("timer id: ["));
+      Serial.print(command.substring(14, 16));
+      Serial.println(F("]")); 
+
+      Serial.print(F("h: ["));
+      Serial.print(command.substring(17, 19));
+      Serial.println(F("]")); 
+
+      Serial.print(F("m: ["));
+      Serial.print(command.substring(20, 22));
+      Serial.println(F("]")); 
+
+      Serial.print(F("h: ["));
+      Serial.print(command.substring(23, 25));
+      Serial.println(F("]")); 
+
+      Serial.print(F("m: ["));
+      Serial.print(command.substring(26, 28));
+      Serial.println(F("]")); 
+    #endif
+
+    // parse parameters
+    timerId = command.substring(14, 16).toInt(); // timer id [0-49]
+    hourTurnOn = (byte)(command.substring(17, 19).toInt()); // turn on hour [0-23]
+    minuteTurnOn = (byte)(command.substring(20, 22).toInt()); // turn on minute [0-59]
+    hourTurnOff = (byte)(command.substring(23, 25).toInt()); // turn off hour [0-23]
+    minuteTurnOff = (byte)(command.substring(26, 28).toInt()); // turn off minute [0-59]
+
+    return updateTimer(timerId, hourTurnOn, minuteTurnOn, hourTurnOff, minuteTurnOff);
+  }
+
+  return false;
 }   
 
 #endif
@@ -2276,7 +3385,7 @@ bool testComponents() {
     // repeats indefinitely
     while(true) {
       // for each realy channel
-      for(int j = RELAY_EXTRA_PIN; j <= RELAY_HEATER_PIN; j++){
+      for(int j = RELAY_FEEDER_PIN; j <= RELAY_HEATER_PIN; j++){
         #if (DEBUG_MODE == true)
           Serial.print(F(" - relay pin:"));
           Serial.println(j);
@@ -2288,7 +3397,7 @@ bool testComponents() {
           _lcd.print(F("     "));
         #endif        
         // turn on relay of index "j" and turn off all others
-        for(int i = RELAY_EXTRA_PIN; i <= RELAY_HEATER_PIN; i++){           
+        for(int i = RELAY_FEEDER_PIN; i <= RELAY_HEATER_PIN; i++){           
            if(i==j)
                digitalWrite(i, LOW);
            else
@@ -2385,7 +3494,7 @@ bool testComponents() {
         _lcd.print(F("btn 6 - Feed"));
       #endif
       #if (USE_RELAYS == true) 
-        digitalWrite(RELAY_EXTRA_PIN, LOW);
+        digitalWrite(RELAY_FEEDER_PIN, LOW);
       #endif
     }
     else
@@ -2397,7 +3506,7 @@ bool testComponents() {
         digitalWrite(RELAY_FILTER_UV_PIN, HIGH);
         digitalWrite(RELAY_SUMP_PUMP_PIN, HIGH);
         digitalWrite(RELAY_DRAIN_PUMP_PIN, HIGH);
-        digitalWrite(RELAY_EXTRA_PIN, HIGH);
+        digitalWrite(RELAY_FEEDER_PIN, HIGH);
       #endif
     }
     delay(100);    
