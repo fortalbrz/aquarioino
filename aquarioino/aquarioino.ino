@@ -18,13 +18,12 @@
 // - water temperature control (heating/cooler fan) (optional - see configuration flags)
 // - feeding timer (optional - see configuration flags)
 // - pH measurement (optional - see configuration flags)
+// - up to 50 standalone timers (remotely programmable with MQTT):
+//   - lightning, UV filter (all relays) turn on/off
+//   - feeding
 // - alarms (optional - see configuration flags):
 //   - temperature
 //   - water levels
-// - standalone timers (programable with MQTT):
-//   - lightning turn on/off
-//   - UV filter turn on/off
-//   - feeding
 // - home assistant sensors:
 //   - water temperature
 //   - water pH
@@ -39,17 +38,17 @@
 //   - UV filter switch
 //   - heater switch
 //   - cooler fan switch
-//   - start partial water change (PWC / TPA) routine button 
-//   - turn off / restart / manual cleaning buttons
+//   - start partial water change (PWC) routine button 
+//   - turn off / restart / "manual cleaning" buttons
 // - weather station (standalone) (optional - see configuration flags)
 // - displays information on LCD 16 x 2 (optional - see configuration flags)
 // - push buttons: (optional - see configuration flags)
 //  - lightning turn on/off
-//  - partial water change (PWC / TPA) routine
+//  - partial water change (PWC) routine
 //  - manual cleaning button
 //  - turn off
 //  - restart 
-// - local time syncronization with home assistant (optional - see configuration flags)//
+// - local time synchronization with home assistant (optional - see configuration flags)//
 //
 //  REMARKS: 
 //    - the arduino mega pro mini uses the USB/serial CH340G CI, so it's necessary to install the Windows driver: 
@@ -111,8 +110,8 @@
 //  [sump pump]     - pushes water from sump back to aquarium (as usual)
 //  [drain pump]    - (cheap/low flow pump) removes dirt water from aquarium into waste/sink 
 //                    (used on first step of the automated partial water change / PWC routine)
-//  ["water reposition" pump] - (cheap/low flow pump) pushes water from an external water reservatory 
-//                              (with conditionated water) into aquarium (compensates evaporation losses
+//  ["water reposition" pump] - (cheap/low flow pump) pushes water from an external water container
+//                              (with conditioned water) into aquarium (compensates evaporation losses
 //                              and second step of automated partial water change / PWC routine)
 //
 //
@@ -153,7 +152,7 @@
 #define ENABLE_FEEDING_TIMER true                  // enables/disables feeding timers
 #define ENABLE_SENSOR_ALARMS true                  // enables/disables sensor alarming
 #define ENABLE_WEATHER_STATION true                // enables/disables standalone weather station (requires air pressure sensor BMP085)
-#define MAX_NUMBER_OF_TIMERS 50                    // maximum number of programable timers (default: 50)
+#define MAX_NUMBER_OF_TIMERS 50                    // maximum number of programmable timers (default: 50)
 #define LAMBDA_EWMA 0.95                           // exponential weighted mean average lambda
 #define FEEDING_AS_PUSH_BUTTON true                // true for feeding using a external feeder push button or false for use a step motor as feeder (see docs)
 //
@@ -270,7 +269,7 @@
 #define TEXT_RELAY_SUMP_PUMP F("sump")
 #define TEXT_RELAY_REPOSITION_PUMP F("repo")
 #define TEXT_RELAY_DRAIN_PUMP F("drain")
-#define TEXT_RELAY_FEED F("feeed")
+#define TEXT_RELAY_FEED F("feed")
 #define TEXT_UNKNOW F("UNKNOW")
 //
 // EEPROM
@@ -518,7 +517,7 @@ struct measure {
   HAButton btnTurnOff(str_turn_off_button_uid);
   HAButton btnRestart(str_restart_button_uid);
   HAButton btnManualCleaning(str_manual_cleaning_button_uid);
-  HAButton btnStartWPC(str_pwc_button_uid);
+  HAButton btnStartPWC(str_pwc_button_uid);
   HAButton btnFeed(str_feed_button_uid);
   HAButton btnSave(str_save_button_uid);
 
@@ -800,8 +799,8 @@ void setup() {
     btnManualCleaning.setName(TEXT_MQTT_NAME_MANUAL_CLEANING);
     btnManualCleaning.onCommand(onButtonCommand);
 
-    btnStartWPC.setName(TEXT_MQTT_NAME_PWC);
-    btnStartWPC.onCommand(onButtonCommand);
+    btnStartPWC.setName(TEXT_MQTT_NAME_PWC);
+    btnStartPWC.onCommand(onButtonCommand);
 
     btnFeed.setName(TEXT_MQTT_NAME_FEED);
     btnFeed.onCommand(onButtonCommand);
@@ -2599,7 +2598,7 @@ void feed() {
 }
 //--------------------------------------------------------------------------------------------------
 //
-// aquarium maintenance routines (WPC, manual cleaning)
+// aquarium maintenance routines (PWC, manual cleaning)
 //
 //--------------------------------------------------------------------------------------------------
 void runWaterParcialChangeRoutine() {
@@ -2642,7 +2641,7 @@ void runWaterParcialChangeRoutine() {
       delay(500);
     }
 
-    // turn of drain pump (water is at low drained level) 
+    // turn off drain pump (water is at low drained level) 
     setRelay(RELAY_DRAIN_PUMP_PIN, false);
     delay(1000);
   
@@ -2856,11 +2855,11 @@ void restart() {
     //
     if (strcmp(topic, MQTT_TIME_SYNC_TOPIC) == 0) {  
       //
-      // Date & time syncronization message from home assistant      
+      // Date & time synchronization message from home assistant      
       // topic: ha/datetime
       // message format: "dd MM yyyy hh mm ss"
       //
-      syncronizeTime(String((const char*)payload));
+      synchronizeTime(String((const char*)payload));
       return;
     }
 
@@ -2910,7 +2909,7 @@ void restart() {
         restart();    
     else if (sender == &btnManualCleaning)
         runManualCleaning();
-    else if (sender == &btnStartWPC) 
+    else if (sender == &btnStartPWC) 
         runWaterParcialChangeRoutine();
     else if (sender == &btnFeed)
         feed();
@@ -3013,9 +3012,9 @@ void restart() {
     mqtt.publish(MQTT_STATES_TOPIC, "test");
   }
   
-  bool syncronizeTime(const String& message) {
+  bool synchronizeTime(const String& message) {
     //
-    // syncronizes RTC data & time with home assistant
+    // synchronizes RTC data & time with home assistant
     //
     // message format: "dd MM yyyy hh mm ss"
     //
@@ -3086,7 +3085,7 @@ void restart() {
       return true;
     }
 
-    if (command == F("wpc")){
+    if (command == F("PWC")){
       runWaterParcialChangeRoutine();
       return true;
     }
@@ -3469,7 +3468,7 @@ bool testComponents() {
         Serial.println(F("button '04 - PWC routine' is pressed!"));
       #endif
       #if (USE_LCD_DISPLAY == true)
-        _lcd.print(F("btn 4 - WPC"));
+        _lcd.print(F("btn 4 - PWC"));
       #endif
       #if (USE_RELAYS == true) 
         digitalWrite(RELAY_SUMP_PUMP_PIN, LOW);
