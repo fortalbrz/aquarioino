@@ -1,14 +1,35 @@
+//------------------------------------------------------------------------------------------------------------------
 //
 //
 // AQUARIO.INO - Aquarium Automation with Home Assistant
 //
 //
-// Source code: https://github.com/fortalbrz/aquarioino
-// Making off: https://youtu.be/3CjU-o5LTEI (version 1.0)
-// Overview: https://youtu.be/8RszBkeuUlk (version 1.0)
+//------------------------------------------------------------------------------------------------------------------
+// source code: https://github.com/fortalbrz/aquarioino
+// see readme: https://github.com/fortalbrz/aquarioino#readme
 //
-// Optimed fpr Arduino Mega 2560 pro mini (CI CH340G)
+// making off: https://youtu.be/3CjU-o5LTEI (version 1.0)
+// overview: https://youtu.be/8RszBkeuUlk (version 1.0)
+//
+// optimed fpr Arduino Mega 2560 pro mini (CI CH340G)
 // - 70 digital I/O, 16 analog inputs, 14 PWM, 4 UART
+//
+// Change log:
+//   - version 2.0: IoT 
+//     - home assistant integration (MQTT)
+//     - 200 programmable timers
+//     - refactored code for enabling/disabling most of the features (adaptation for use needs)
+//     - stepper motor feeder
+//   - version 1.0: standalone controller 
+//     - water temperature control (cooler/heater)
+//     - pH measurements
+//     - relays timers (lightning, UV filter)
+//     - automated partial water change (PWC) routine     
+//     - automated water replenishment (due evaporation losses)
+//     - feeding control (timers)
+//     - water levels, water temperature and pH alarms
+//     - weather station (air temperature, humidity and pressure sensors, local / standalone forecasting)
+//     - LCD display
 //
 // Features:
 // - fully integrated with home assistant (MQTT) or standalone (optional - see configuration flags)
@@ -18,12 +39,13 @@
 // - water temperature control (heating/cooler fan) (optional - see configuration flags)
 // - feeding timer (optional - see configuration flags)
 // - pH measurement (optional - see configuration flags)
-// - up to 50 standalone timers (remotely programmable with MQTT):
-//   - lightning, UV filter (all relays) turn on/off
-//   - feeding
+// - up to 200 standalone timers (remotely programmable with MQTT):
+//   - lightning, UV filter, heater, cooler, pumps (i.e., all relays) turn on/off timers  
+//   - feeding timers
 // - alarms (optional - see configuration flags):
-//   - temperature
-//   - water levels
+//   - temperature (max/min)
+//   - pH (max/min)
+//   - water levels (aquarium low water level, sump pump low water level)
 // - home assistant sensors:
 //   - water temperature
 //   - water pH
@@ -38,36 +60,22 @@
 //   - UV filter switch
 //   - heater switch
 //   - cooler fan switch
+//   - sump,  "drain" and "water reposition" pumps switches
+//   - enables/disables timers and feeding switches
 //   - start partial water change (PWC) routine button 
-//   - turn off / restart / "manual cleaning" buttons
+//   - turn off / restart / "manual cleaning" / save configurations buttons
 // - weather station (standalone) (optional - see configuration flags)
 // - displays information on LCD 16 x 2 (optional - see configuration flags)
-// - push buttons: (optional - see configuration flags)
-//  - lightning turn on/off
-//  - partial water change (PWC) routine
+// - push buttons: (optional - see configuration flags) 
+//  - lightning turn on/off button
+//  - partial water change (PWC) routine button
 //  - manual cleaning button
-//  - turn off
-//  - restart 
+//  - turn off button
+//  - restart button
+// - protects sump pump of running out of water
 // - local time synchronization with home assistant (optional - see configuration flags)//
 //
-//  REMARKS: 
-//    - the arduino mega pro mini uses the USB/serial CH340G CI, so it's necessary to install the Windows driver: 
-//        - CH340G driver: http://bit.ly/44WdzVF (windows 11 compatible)
-//        - driver installation instructions http://bit.ly/3ZqIqc0 (pt-BR)
-//    - Arduino IDE (2.0) can be obtained at: https://www.arduino.cc/en/software
-//    - uses a micro USB cable to connect to the Arduino and select the "Arduino Mega or Mega 2560" board in the IDE ("Tools" -> "Board").
-//    - in the library manager, select and install:
-//        - "OneWire" by Jim Studt, Tom Pollard, Robin James, etc
-//        - "LiquidCrystal" by Arduino, Adafuit
-//        - "DallasTemperature" by Milles Burtton, etc
-//        - "Adafruit BMP085 Library" by Adafruit
-//        - "DHT sensor library" by Adafruit
-//        - "RTClib" by Adafruit
-//        - "home-assistant-integration" by David Chyrzynsky
-//
 // Materials:
-//
-// - 1 box (reused, wooden)
 // - 1 arduino mega 2560 pro (mini) - https://produto.mercadolivre.com.br/MLB-2012119523-arduino-mega-pro-mini-lacrado-_JM
 // - 1 DS18B20 temperature sensor (waterproof) - https://produto.mercadolivre.com.br/MLB-1659212606-sensor-de-temperatura-ds18b20-prova-dagua-arduino-_JM
 // - 1 DHT11 temperature and humidity sensor- https://produto.mercadolivre.com.br/MLB-688214170-sensor-de-umidade-e-temperatura-dht11-com-pci-pic-arduino-_JM
@@ -75,23 +83,48 @@
 // - 1 pH sensor PH4502C - https://produto.mercadolivre.com.br/MLB-1894057619-modulo-sensor-de-ph-ph4502c-com-eletrodo-sonda-bnc-arduino-_JM
 // - 1 relay module with 8 channels (5 V) - https://produto.mercadolivre.com.br/MLB-1758954385-modulo-rele-rele-5v-8-canais-para-arduino-pic-raspberry-pi- _JM
 // - 2 float water level sensors and 2 x 220 olhm resistors - https://produto.mercadolivre.com.br/MLB-1540418150-sensor-de-nivel-de-agua-boia-para-arduino-esp8266-esp32-_JM
+// - 1 stepper motor with driver (optinal stepper motor feeder)
 // - 1 power source 8v 1A (any voltage between 6 V and 9 V)
 // - 1 trimpot 10k
 // - 6 tactile push buttom keys and 6 x 1k resistors - https://produto.mercadolivre.com.br/MLB-1858468268-kit-10x-chave-tactil-push-button-6x6x5mm-arduino-eletrnica-_JM
 // - 6 female recessed sockets - https://produto.mercadolivre.com.br/MLB-1844503844-6-tomada-embutir-fmea-preta-3-pinos-10a-painel-aparelho-_JM
-// - 1 led with
+// - 1 led and resistor 10k olhm (optional: indicates "power on")
 // - 1 power source 12v, 1 fan 12v (cooler), 1 water pump 12v (reposition pump)
-// - flexible cab
+// - plastic hoses (connect bumps)
+// - flexible cab (22 agw)
+// - 1 box (reused, wooden)
+// - 1 large plastic water container (reused, optional as "water reposition container")
 // 
+// remark: assuming that sump tank, sump pump, sump water buoy, etc are already in place...
 //
-//   Circuit Wiring Instruction (step by step):
-//   -  https://www.circuito.io/static/reply/index.html?solutionId=65010bbd91d445002e8974a5&solutionPath=storage.circuito.io
-// 
+// Circuit Wiring Instruction (step by step):
+// - see readme: https://github.com/fortalbrz/aquarioino#readme
+// - see https://www.circuito.io/static/reply/index.html?solutionId=65010bbd91d445002e8974a5&solutionPath=storage.circuito.io
 //  
+// Flashing the code
+//   - the Arduino Mega Pro Mini uses the USB/serial IC CH340G, so it's necessary to install the Windows driver: 
+//       - CH340G driver: http:|bit.ly/44WdzVF (windows 11 compatible)
+//       - driver installation instructions (pt-BR): http:|bit.ly/3ZqIqc0
+//   - Download Arduino IDE: https://www.arduino.cc/en/software
+//   - uses a micro USB cable to connect to the Arduino and select the "Arduino Mega or Mega 2560" board in the IDE ("Tools" -> "Board").
+//   - in the library manager, select and install:
+//       - "OneWire" by Jim Studt, Tom Pollard, Robin James, etc
+//       - "LiquidCrystal" by Arduino, Adafuit
+//       - "DallasTemperature" by Milles Burtton, etc
+//       - "Adafruit BMP085 Library" by Adafruit
+//       - "DHT sensor library" by Adafruit
+//       - "RTClib" by Adafruit
+//       - "home-assistant-integration" by David Chyrzynsky
 //
+// Assembly 
+//   The water levels sensors are used for:
+//   - protects the sump pump (preventing it from running without water)
+//   - automation of water replenishment due evaporation losses
+//   - automation of the partial water change (PWC) routine
+//   The water levels sensors are optional, in the sense that their use can be disabled using the configuration flags. 
+//   However, the features above will be suppressed. Tthe sensors are expected to be mounted as *closed* for full water level and *opened* for low water level. 
 //
-// 
-// Water level sensors position:
+//   The figure bellow, shows the main solution components with focus on water pumps and water level sensors:
 //
 //                                [water input]
 //   |                       |     |                                                |     ------------------------|   |
@@ -115,10 +148,65 @@
 //                              and second step of automated partial water change / PWC routine)
 //
 //
-// TODO: 
-//  - check feeder lock logic
-//  - feeder with step motor
-//  - testing
+// - "drain" pump and "drain" water level sensor are mounted at aquarium/fisk tank as show (with the "drain" water level sensors at maximum aquarium level)
+// - "sump" pump and "sump" water level sensor are mounted at sump tank as show (with the "sump" water level sensors at minimum level for sump pump safety)
+// - "water reposition" pump is mounted a external water container ("water reposition tank)
+//
+// The "drain" water level sensor and "water reposition" pump work together in the automation of water replenishment due evaporation losses (optional, see config flags). 
+// Whenever the water level drops (at water level sensor), the water reposition pump pushes more water into the fisk tank (keeping it stable).
+// This feature is optional and can be disabled using the[configuration flags. 
+// In that case, "water reposition container", "water reposition pump" and the water level sensor can be dismissed. 
+// Notice that the flow performance demand over the "water reposition pump" is very low, and a really cheap / low flow pump (~ 3w) is strongly recommended.  
+//
+// As expected, the "sump" pump pushed water from sump back into fisk tank. The "sump" water sensor level 
+// turn of the sump pump case water level is to low (preventing it from running without water).
+//
+// More over, "sump" pump, "sumo" water level sensor, "drain" pump and "drain" water level sensor 
+// work together in the automation of the partial water change (PWC) routine (optional, see config flags). 
+// Using a ingenious teamwork, the solution perform 2 main steps:
+//   - step 1: removes dirt water from aquarium / fisk tank into waste/sink
+//   - step *: pushes water from the external water container (with conditioned water) into aquarium / fisk tank, until the original water level.
+//
+// This feature is also optional and can be disabled using the configuration flags. 
+// In that case, "water reposition container", "water reposition pump", "drain" pump and "drain" water level sensor can be dismissed. 
+// Notice that the flow performance demand over the "drain pump" is also very low (a slower PWC is better for the fishes), and a really cheap / low flow pump (~ 3w) is also strongly recommended.  
+//
+// Furthermore, the code was designed to use a minimum amount of water level sensors. However, you can improve the setup adding independent water level sensors for maximum aquarium level and PWC stop level.
+// You can also include a water level sensor at external water container ("water reposition tank") in order to alarm and/or protect the "water reposition" pump.
+//
+// Feeder
+//
+// Using feeder feature (ENABLE_FEEDING true) requires an fish food container that can dispense it to the fisk tank. There are two possible options:
+//
+// - integrates an external feeder (e.g., Boyu feeder) (FEEDING_AS_PUSH_BUTTON true)
+// - making a feeder from scratch using a stepper motor (FEEDING_AS_PUSH_BUTTON false)
+//
+// Integrating external feeder
+//
+// This configuration (FEEDING_AS_PUSH_BUTTON true) assumes to control an external feeder (e.g., Boyu - that I already have!), 
+// and requires disassembly it and a little wiring. Connects (parallel) the "feed" push button of your feeder (both terminals) 
+// to the "normally open" pins of your relay pins (RELAY_FEEDER_PIN). 
+// Therefore, the relay can simulate a user button press (and the feeder push button still working independently, just as before...).
+//
+// Stepper motor feeder
+//
+// This configuration (FEEDING_AS_PUSH_BUTTON false) assumes making a feeder from scratch using a stepper motor (and driver).  
+// On that step, the stepper motor will the specified number of turns in order to feed the fishes.
+// The simpler way of do the "mechanical" parts of the feeder is to fix and small plastic bottle on stepper motor axis.
+// Make one hole (transversal) in the bottle in order to pass the food as the bottle rotates, like:
+//   - https://www.instructables.com/Simplest-Automatic-Fish-Feeder/
+//   - https://www.instructables.com/Arduino-Fish-Feeder/
+// Alternatively, you can use any kind of drill or wire do drive the food:
+//   - https://hackaday.com/2014/10/14/diy-auto-fish-feeder-feeds-fish-automatically/) 
+//   - https://flourishingplants.com/how-to-make-an-automatic-fish-feeder-with-simple-materials/)
+//
+// Remark: in this step up, the relay pin (RELAY_FEEDER_PIN) is free to be used as an extra relay for any application 
+// (the same if feeding routine is disabled at all - ENABLE_FEEDING false).
+//
+// TODO:
+//  - use push buttons by interuption
+//
+//------------------------------------------------------------------------------------------------------------------
 //
 // 2023 - Jorge Albuquerque (jorgealbuquerque@gmail.com)
 //
@@ -149,19 +237,24 @@
 #define USE_EEPROM false                           // enables/disables EEPROM 
 #define ENABLE_LIGHTS_TIMER true                   // enables/disables lights timers
 #define ENABLE_UV_FILTER_TIMER true                // enables/disables UV filter timers
+#define ENABLE_FEEDING true                        // true for uses "feeding" relay as feeder, false for uses it as regular extra relay
 #define ENABLE_FEEDING_TIMER true                  // enables/disables feeding timers
+#define FEEDING_AS_PUSH_BUTTON true                // true for feeding using a external feeder push button or false for use a step motor as feeder (see docs)
 #define ENABLE_SENSOR_ALARMS true                  // enables/disables sensor alarming
 #define ENABLE_WEATHER_STATION true                // enables/disables standalone weather station (requires air pressure sensor BMP085)
 #define MAX_NUMBER_OF_TIMERS 50                    // maximum number of programmable timers (default: 50)
-#define LAMBDA_EWMA 0.95                           // exponential weighted mean average lambda
-#define FEEDING_AS_PUSH_BUTTON true                // true for feeding using a external feeder push button or false for use a step motor as feeder (see docs)
+#define FEEDER_STEPPER_MOTOR_PULSER_PER_TURN 200   // number of pulses per turn on stepper motor feeder
+#define STEPPER_MOTOR_DELAY 700                    // time delay (in microseconds) between the motor steps (use it for change the rotation speed)
+#define FEEDER_TURNS 1                             // default number of feeder turns (comple cycles)
+#define LAMBDA_EWMA 0.96                           // exponential weighted mean average lambda
+
 //
 // MQTT configuration
 //
 #define MQTT_BROKER_ADDRESS "192.168.68.93"        // MQTT broker server ip
 #define MQTT_BROKER_PORT 1883                      // MQTT broker port
 #define MQTT_USERNAME  "mqtt-user"                 // can be omitted if not needed
-#define MQTT_PASSWORD  "mqtt"                      // can be omitted if not needed
+#define MQTT_PASSWORD  "mqtt-pass"                 // can be omitted if not needed
 #define MQTT_DISCOVERY_TOPIC "homeassistant"       // MQTT discovery topic prefix 
 #define MQTT_STATES_TOPIC "aquarioino/state"       // MQTT state topic prefix 
 #define MQTT_COMMAND_TOPIC "aquarioino/cmd"        // MQTT topic for custom text commands
@@ -219,6 +312,9 @@
 #define PUSH_BUTTON_PWC_ROUTINE_PIN 28
 #define PUSH_BUTTON_MANUAL_CLEANING_PIN 39
 #define PUSH_BUTTON_FEEDING_PIN 30 
+// steper motor
+#define STEPPER_MOTOR_STEP_PIN 31
+#define STEPPER_MOTOR_DIRECTION_PIN 32
 //
 // LCD text messages (MAX 16 characters) - [pt-BR]
 //
@@ -277,9 +373,9 @@
 #define EEPROM_START_ADDRESS 0
 #define EEPROM_FLAGS_ADDRESS 1
 #define EEPROM_FLAG_TIMERS_ENABLED_BIT 0
+#define EEPROM_FLAG_FEEDER_TIMERS_ENABLED_BIT 1
 #define EEPROM_ALARM_BOUNDS_ADDRESS 2
-#define EEPROM_PRESSURE_ADDRESS (EEPROM_ALARM_BOUNDS_ADDRESS + 4 * sizeof(float))
-#define EEPROM_TIMERS_ADDRESS (EEPROM_ALARM_BOUNDS_ADDRESS + 5 * sizeof(float))
+#define EEPROM_TIMERS_ADDRESS (EEPROM_ALARM_BOUNDS_ADDRESS + 4 * sizeof(float))
 #define EEPROM_START_CHECK 0x24
 //
 // status codes (internal)
@@ -459,6 +555,7 @@ struct measure {
   const char str_cooler_switch_uid[] = "aquarioino_cooler_switch";
   const char str_uv_filter_switch_uid[] = "aquarioino_uv_filter_switch";
   const char str_timers_switch_uid[] = "aquarioino_timers_switch";
+  const char str_feeder_timers_switch_uid[] = "aquarioino_feeder_timers_switch";
   const char str_turn_off_button_uid[] = "aquarioino_turn_off_button";
   const char str_restart_button_uid[] = "aquarioino_restart_button";
   const char str_manual_cleaning_button_uid[] = "aquarioino_manual_cleaning_button";
@@ -469,25 +566,33 @@ struct measure {
   const char str_temperature_min_uid[] = "aquarioino_temperature_min";
   const char str_ph_max_uid[] = "aquarioino_ph_max";
   const char str_ph_min_uid[] = "aquarioino_ph_min";
-  const char TEXT_MQTT_NAME_STATE[] = "Estado do Aquario";
-  const char TEXT_MQTT_NAME_LIGHT[] = "Aquario Luz";
-  const char TEXT_MQTT_NAME_HEATER[] = "Aquario Arquecedor";
-  const char TEXT_MQTT_NAME_COOLER[] = "Aquario Cooler";
-  const char TEXT_MQTT_NAME_TIMERS[] = "Aquario Timers";
-  const char TEXT_MQTT_NAME_WEATHER_FORECAST[] = "Aquario Forecast";
-  const char TEXT_MQTT_NAME_UV_FILTER[] = "Aquario Filtro UV";
-  const char TEXT_MQTT_NAME_TURN_OFF[] = "Desligar Aquario";
-  const char TEXT_MQTT_NAME_RESTART[] = "Reiniciar Aquario";
-  const char TEXT_MQTT_NAME_MANUAL_CLEANING[] = "Limpeza Manual";
-  const char TEXT_MQTT_NAME_PWC[] = "TPA";
-  const char TEXT_MQTT_NAME_FEED[] = "Alimentar";
-  const char TEXT_MQTT_NAME_RUNNING[] = "Ligado";
-  const char TEXT_MQTT_NAME_WATER_TEMPERATURE[] = "Temperatura da agua";
-  const char TEXT_MQTT_NAME_WATER_PH[] = "pH da agua";
-  const char TEXT_MQTT_NAME_AIR_TEMPERATURE[] = "Temperatura do ar";
-  const char TEXT_MQTT_NAME_AIR_HUMIDITY[] = "Umidade do ar";
-  const char TEXT_MQTT_NAME_AIR_PRESSURE[] = "Pressao Atmosférica";
-  const char TEXT_MQTT_NAME_SAVE[] = "Salvar Configuracoes";
+  const char str_feeder_turns_uid[] = "aquarioino_feeder_turns";
+  const char TEXT_MQTT_NAME_STATE[] = "Tank State";
+  const char TEXT_MQTT_NAME_LIGHT[] = "Tank Light";
+  const char TEXT_MQTT_NAME_HEATER[] = "Tank Heater";
+  const char TEXT_MQTT_NAME_COOLER[] = "Tank Cooler";
+  const char TEXT_MQTT_NAME_TIMERS[] = "Tank Timers";
+  const char TEXT_MQTT_NAME_FEED_TIMERS[] = "Tank Feeder";
+  const char TEXT_MQTT_NAME_WEATHER_FORECAST[] = "Weather Forecast";
+  const char TEXT_MQTT_NAME_UV_FILTER[] = "Tank UV Filter";
+  const char TEXT_MQTT_NAME_TURN_OFF[] = "Tank Turn off";
+  const char TEXT_MQTT_NAME_RESTART[] = "Tank Restart";
+  const char TEXT_MQTT_NAME_MANUAL_CLEANING[] = "Tank Manual Cleaning";
+  const char TEXT_MQTT_NAME_PWC[] = "Tank PWC";
+  const char TEXT_MQTT_NAME_FEED[] = "Tank Feed";
+  const char TEXT_MQTT_NAME_RUNNING[] = "running";
+  const char TEXT_MQTT_NAME_WATER_TEMPERATURE[] = "Tank Water Temperature";
+  const char TEXT_MQTT_NAME_WATER_PH[] = "Tank pH";
+  const char TEXT_MQTT_NAME_AIR_TEMPERATURE[] = "Air Temperature";
+  const char TEXT_MQTT_NAME_AIR_HUMIDITY[] = "Humidity";
+  const char TEXT_MQTT_NAME_AIR_PRESSURE[] = "Atmospheric Pressure";
+  const char TEXT_MQTT_NAME_SAVE[] = "Salve Tank Setup";
+  const char TEXT_MQTT_FEEDER_TURNS[] = "Tank Feeder Turns";
+  #define TEMP_MIN 10
+  #define TEMP_MAX 45
+  #define TEMP_STEP 0.1
+  #define PH_MIN 3
+  #define PH_MAX 12
   //
   // Home Assistant (MQTT)
   //
@@ -512,6 +617,7 @@ struct measure {
   HASwitch chkHeaterSwitch(str_heater_switch_uid);
   HASwitch chkCoolerSwitch(str_cooler_switch_uid);
   HASwitch chkTimersSwitch(str_timers_switch_uid);
+  HASwitch chkFeederTimersSwitch(str_feeder_timers_switch_uid);
 
   // MQTT buttons
   HAButton btnTurnOff(str_turn_off_button_uid);
@@ -526,6 +632,7 @@ struct measure {
   HANumber lblTemperatureMin(str_temperature_min_uid, HASensorNumber::PrecisionP1);
   HANumber lblPhMax(str_ph_max_uid, HASensorNumber::PrecisionP1);
   HANumber lblPhMin(str_ph_min_uid, HASensorNumber::PrecisionP1);
+  HANumber lblFeederTurns(str_feeder_turns_uid, HASensorNumber::PrecisionP0);
 
 #endif
 
@@ -533,26 +640,29 @@ struct measure {
 // Globals: states and measured values
 //
 DateTime _now;
-int _status = 0;                                 // aguarium state code
-bool _isTimersEnabled = true;                    // enables/disables timers
-bool _statusFeeded = false;                      // checks that feed routine was executed
-bool _waterDrainLevelLow = false;                // "drain" water level state (see diagram above)
-bool _waterSumpLevelLow = false;                 // "sump" water level state (see diagram above)
-measure _measuredAirTemperature;                 // air temperature (C)
-measure _measuredAirHumidity;                    // air humidity (%)
-measure _measuredAirPressure;                    // atmosferic pressure (mPa)
-measure _measuredAirAltitude;                    // altirude (m)
-measure _measuredAirSealevelPressure;            // sea level pressure (mPa)  
-measure _measuredWaterTemperature;               // water temperature (C)
-measure _measuredWaterPh;                        // water pH 
-bool _blink = false;
+int _status = STATUS_CYCLE_START;                       // aguarium state code
+bool _isTimersEnabled = USE_STANDALONE_TIMERS;          // enables/disables timers
+bool _isFeedingTimersEnabled = ENABLE_FEEDING_TIMER;    // enables/disables feeding timers
+bool _statusFeeded = false;                             // checks that feed routine was executed (feeding semaphore): prevents feed several times
+bool _waterDrainLevelLow = false;                       // "drain" water level state (see diagram above)
+bool _waterSumpLevelLow = false;                        // "sump" water level state (see diagram above)
+measure _measuredAirTemperature;                        // air temperature (C)
+measure _measuredAirHumidity;                           // air humidity (%)
+measure _measuredAirPressure;                           // atmosferic pressure (mPa)
+measure _measuredAirAltitude;                           // altirude (m)
+measure _measuredAirSealevelPressure;                   // sea level pressure (mPa)  
+measure _measuredWaterTemperature;                      // water temperature (C)
+measure _measuredWaterPh;                               // water pH 
+unsigned long _feederTurns = FEEDER_TURNS;              // number of feeder turns
+bool _blink = false;                                    // builtin led state
 unsigned long _lastAvailabilityTime = millis();
 
 // required for "setAllRelays()" routine
-const unsigned int RELAY_PINS[] = {RELAY_LIGHTS_PIN, RELAY_HEATER_PIN, RELAY_FILTER_UV_PIN, RELAY_COOLER_FAN_PIN, RELAY_SUMP_PUMP_PIN, RELAY_WATER_REPOSITION_PUMP_PIN, RELAY_DRAIN_PUMP_PIN, RELAY_FEEDER_PIN};
+const unsigned int RELAY_PINS[] = {RELAY_LIGHTS_PIN, RELAY_HEATER_PIN, RELAY_FILTER_UV_PIN, 
+  RELAY_COOLER_FAN_PIN, RELAY_SUMP_PUMP_PIN, RELAY_WATER_REPOSITION_PUMP_PIN, RELAY_DRAIN_PUMP_PIN, RELAY_FEEDER_PIN};
 // relay states cache
 bool RELAY_STATES[RELAY_SIZE];
-// force relay state to ON (turn on by user button)
+// force relay state to ON (turned on by user button)
 bool RELAY_FORCED_TURN_ON[RELAY_SIZE];
 
 // timers
@@ -567,19 +677,10 @@ timer RELAY_TIMERS[TIMERS_SIZE];
 //
 // reference alarm levels/bounds (with default values)
 //
-float _alarmBoundWaterTemperatureMin = 26.0;
-float _alarmBoundWaterTemperatureMax = 29.1;
-float _alarmBoundWaterPhMin = 7.5;
-float _alarmBoundWaterPhMax = 8.9;
-// timers start/end hours
-unsigned int _timerLightStart = 6;
-unsigned int _timerLightEnd = 23;
-unsigned int _timerUvStart = 8;
-unsigned int _timerUvEnd = 15;
-unsigned int _timerFeed1 = 7;
-unsigned int _timerFeed2 = 12;
-unsigned int _timerFeed3 = 18;
-
+float _alarmBoundWaterTemperatureMax = DEFAULT_ALARM_BOUND_TEMP_MAX;
+float _alarmBoundWaterTemperatureMin = DEFAULT_ALARM_BOUND_TEMP_MIN;
+float _alarmBoundWaterPhMax = DEFAULT_ALARM_BOUND_PH_MAX;
+float _alarmBoundWaterPhMin = DEFAULT_ALARM_BOUND_PH_MIN;
 
 //--------------------------------------------------------------------------------------------------
 //
@@ -616,7 +717,7 @@ void setup() {
     pinMode(RELAY_COOLER_FAN_PIN, OUTPUT);
     pinMode(RELAY_WATER_REPOSITION_PUMP_PIN, OUTPUT);
 
-    // initializes relays states (turns off)
+    // initializes relays states (HIGH = turns off)
     digitalWrite(RELAY_HEATER_PIN, HIGH);
     digitalWrite(RELAY_LIGHTS_PIN, HIGH);
     digitalWrite(RELAY_SUMP_PUMP_PIN, HIGH);
@@ -715,17 +816,6 @@ void setup() {
     else {
       // initialize pressure measurements
       updateMeasure(_measuredAirPressure, _sensorAirPresure.readPressure());
-      
-      //#if (USE_EEPROM == true)
-      // updateMeasure(_measuredAirPressure.value, (float) EEPROM.read(EEPROM_PRESSURE_ADDRESS));
-      // if (_measuredAirPressure.value == 0) 
-      //   _measuredAirPressureAvg = _measuredAirPressure;
-      
-      // // todo avoid writing
-      // // EEPROM.update(EEPROM_PRESSURE_ADDRESS, (byte)_measuredAirPressureAvg); 
-      // #else
-      // _measuredAirPressureAvg = _measuredAirPressure;
-      //#endif
     }
   #endif
 
@@ -750,7 +840,15 @@ void setup() {
   #endif
   delay(100);
 
-  #if (USE_HOME_ASSISTANT)
+  #if (ENABLE_FEEDING == true && FEEDING_AS_PUSH_BUTTON == false) 
+    //
+    // Initialized stepper motor feeder (not use "push button"-like feeder)
+    //
+    pinMode(STEPPER_MOTOR_STEP_PIN, OUTPUT); 
+    pinMode(STEPPER_MOTOR_DIRECTION_PIN, OUTPUT);
+  #endif
+
+  #if (USE_HOME_ASSISTANT == true)
     //
     // MQTT initialization
     //
@@ -789,6 +887,10 @@ void setup() {
     chkTimersSwitch.setName(TEXT_MQTT_NAME_TIMERS);
     chkTimersSwitch.setRetain(true);
     chkTimersSwitch.onCommand(onSwitchCommand);
+
+    chkFeederTimersSwitch.setName(TEXT_MQTT_NAME_FEED_TIMERS);
+    chkFeederTimersSwitch.setRetain(true);
+    chkFeederTimersSwitch.onCommand(onSwitchCommand);
     
     btnTurnOff.setName(TEXT_MQTT_NAME_TURN_OFF);
     btnTurnOff.onCommand(onButtonCommand);
@@ -808,26 +910,30 @@ void setup() {
     btnSave.setName(TEXT_MQTT_NAME_SAVE);
     btnFeed.onCommand(onButtonCommand);
 
-
-    lblTemperatureMax.setMin(10);
-    lblTemperatureMax.setMax(40);
-    lblTemperatureMax.setStep(0.1);
+    lblTemperatureMax.setMax(TEMP_MAX);
+    lblTemperatureMax.setMin(TEMP_MIN);    
+    lblTemperatureMax.setStep(TEMP_STEP);
     lblTemperatureMax.onCommand(onNumberChange);
 
-    lblTemperatureMin.setMin(10);
-    lblTemperatureMin.setMax(50);
-    lblTemperatureMin.setStep(0.1);
+    lblTemperatureMin.setMax(TEMP_MAX);
+    lblTemperatureMin.setMin(TEMP_MIN);    
+    lblTemperatureMin.setStep(TEMP_STEP);
     lblTemperatureMin.onCommand(onNumberChange);
-
-    lblPhMax.setMin(3);
-    lblPhMax.setMax(12);
-    lblPhMax.setStep(0.1);
-    lblPhMax.onCommand(onNumberChange);
     
-    lblPhMin.setMin(3);
-    lblPhMin.setMax(12);
-    lblPhMin.setStep(0.1);
+    lblPhMax.setMax(PH_MAX);
+    lblPhMax.setMin(PH_MIN);
+    lblPhMax.setStep(TEMP_STEP);
+    lblPhMax.onCommand(onNumberChange);
+        
+    lblPhMin.setMax(PH_MAX);
+    lblPhMin.setMin(PH_MIN);
+    lblPhMin.setStep(TEMP_STEP);
     lblPhMin.onCommand(onNumberChange);
+
+    lblFeederTurns.setMax(5);
+    lblFeederTurns.setMin(1);
+    lblFeederTurns.setStep(1);
+    lblFeederTurns.onCommand(onNumberChange);
     
     // start MQTT
     mqtt.begin(MQTT_BROKER_ADDRESS, MQTT_BROKER_PORT, MQTT_USERNAME, MQTT_PASSWORD);
@@ -965,6 +1071,57 @@ void loop() {
 
 //--------------------------------------------------------------------------------------------------
 //
+// feeding
+//
+//--------------------------------------------------------------------------------------------------
+
+void feed() {  
+  //
+  // Feeding procedure
+  //
+  #if (USE_RELAYS == true && ENABLE_FEEDING == true)  
+
+    #if (FEEDING_AS_PUSH_BUTTON == true)
+      //
+      // this configuration assumes to control an external feeder (Boyu - that I already have!), 
+      // connect the "feed" push button (both terminals) of the external feeder to the 
+      // "normally open" pins of the relay RELAY_FEEDER_PIN. Therefore, the relay can 
+      // simulate an user button press (still working independently).
+      //
+
+      // ensures that relay have the transition states: off -> on -> off
+      // when relay is on: hort circuit the Boyu feeder push button, simulating user pressing!
+      // REMARK: set pin=LOW to turn on relay 
+      digitalWrite(RELAY_FEEDER_PIN, HIGH);
+      delay(100);
+            
+      digitalWrite(RELAY_FEEDER_PIN, LOW);
+      delay(300);
+
+      digitalWrite(RELAY_FEEDER_PIN, HIGH);
+      delay(300);    
+
+    #else
+      //
+      // TODO: Uses a step motor as feeder (new feature)
+      //
+      digitalWrite(STEPPER_MOTOR_DIRECTION_PIN, HIGH); 
+
+      for (unsigned int i = 0 ; i < _feederTurns; i++){
+        for(unsigned int j = 0 ; j < FEEDER_STEPPER_MOTOR_PULSER_PER_TURN; i++){ 
+          // by changing this time delay between the steps we can change the rotation speed
+          digitalWrite(STEPPER_MOTOR_STEP_PIN, HIGH); 
+          delayMicroseconds(STEPPER_MOTOR_DELAY);
+          digitalWrite(STEPPER_MOTOR_STEP_PIN, LOW); 
+          delayMicroseconds(STEPPER_MOTOR_DELAY); 
+        }
+    #endif
+
+  #endif
+}
+
+//--------------------------------------------------------------------------------------------------
+//
 // Auxiliar functions
 //
 //--------------------------------------------------------------------------------------------------
@@ -1004,11 +1161,11 @@ void setRelay(unsigned int relayPin, const bool& state,
     // gets relay index by pin number
     unsigned int index = (useIndex ? relayPin : getRelayIndexByPin(relayPin));
   
-    // ensure valid relay pin
+    // ensure valid relay pin number
     if (index >= RELAY_SIZE){
       // invalid relay pin! 
       #if (DEBUG_MODE == true) 
-        Serial.print(F("Invalid relay pin: "));
+        Serial.print(F("Warning: invalid relay pin: "));
         Serial.println(relayPin);    
       #endif
       return;
@@ -1017,21 +1174,34 @@ void setRelay(unsigned int relayPin, const bool& state,
     if (useIndex)
       // gets relay pin from relay index
       relayPin = RELAY_PINS[index];
+
+    //
+    // at this point:
+    //   relayPin = relay pin number
+    //   index = relay index at RELAY_PIN vector
+    // as it should be!
+    //
     
-    #if (FEEDING_AS_PUSH_BUTTON == true)
-      if (relayPin == RELAY_FEEDER_PIN) {
-        // feeder relay works different: just a push button press        
-        feed();        
+    #if (ENABLE_FEEDING == true)
+      //
+      // "feeder" relay works different in "ENABLE_FEEDING" mode!
+      //      
+      if (relayPin == RELAY_FEEDER_PIN) {        
+        // default states
+        RELAY_STATES[index] = false;
+        RELAY_FORCED_TURN_ON[index] = false;        
+        if (state)
+          feed();
         return;
       }
     #endif
 
     if (force) {
-      // set forced state: keeps the flag on/off
+      // sets "forced" state: on/off
       RELAY_FORCED_TURN_ON[index] = state;
     }
     else if (!state && RELAY_FORCED_TURN_ON[index]){
-      // if "forced turned on", do not turn off
+      // if "forced turned on": do not turn off!
       return;
     }
 
@@ -1167,18 +1337,21 @@ void setAllRelays(const bool& state, const unsigned int& exception = RELAY_SIZE,
   //
   // sets all relays at specified state (with an inverted exception, if required)
   //
-  #if (FEEDING_AS_PUSH_BUTTON == true)
-    unsigned int feed_index = getRelayIndexByPin(RELAY_FEEDER_PIN);
-  #endif  
-
+  // parmeters:
+  //   state        new relay states
+  //   exception    [optional] the specified relay pin will have inverted state
+  //   force        [optional] ativate the relay "forced" state: 
+  //                           - state=true, force=true => relay is turned on and only can be turned off with the combination below   
+  //                           - state=false, force=true => relay is turned off (even with a previous forced turn on)
+  //                           - state=true, force=false => relay is turned on
+  //                           - state=false, force=false => relay is turned off CASE "forced turn on" state is not set, otherwise, do nothing.
+  //
   for (unsigned int index = 0; index < RELAY_SIZE; index++) {
     
-    #if (FEEDING_AS_PUSH_BUTTON == true)
-      // om feeding "as push button", the feed relay
-      // cannot be turned on/off
-      if (index == feed_index){        
-        continue;
-      }
+    #if (ENABLE_FEEDING == true)
+      // on "ENABLE_FEEDING" mode, the feeding relay cannot be turned on/off
+      if (RELAY_PINS[index] == RELAY_FEEDER_PIN)
+        continue;      
     #endif
 
     if (exception < RELAY_SIZE && index == exception)
@@ -1190,7 +1363,7 @@ void setAllRelays(const bool& state, const unsigned int& exception = RELAY_SIZE,
 
 unsigned int getRelayIndexByPin(const unsigned int& relayPin){
   //
-  // gets relay index by specified relay pin number
+  // gets relay index (at RELAY_PINS vector) by specified relay pin number
   //
   #if (USE_RELAYS == true)
   for (unsigned int index = 0; index < RELAY_SIZE; index++)
@@ -1204,7 +1377,7 @@ unsigned int getRelayIndexByPin(const unsigned int& relayPin){
 
 String getRelayNameByPin(const unsigned int& relayPin){
   //
-  // gets relay encoded name by specified relay pin number
+  // gets relay encoded string name by specified relay pin number
   //
   switch (relayPin) {
 
@@ -1239,7 +1412,7 @@ String getRelayNameByPin(const unsigned int& relayPin){
 
 unsigned int getRelayPinByName(const String& relayName) {
   //
-  // gets relay pin number by specified encoded name
+  // gets relay pin number by specified encoded string name
   //
   if (relayName.endsWith(TEXT_RELAY_LIGHTS))
       return RELAY_LIGHTS_PIN;
@@ -1287,7 +1460,7 @@ int availableMemory() {
   
   void printMeasure(const measure& measure) {
     //
-    // print measure values
+    // print measure values (debug only)
     //
     Serial.print(" - value: ");
     Serial.print(measure.value);
@@ -1331,6 +1504,18 @@ void setTimersEnabled(const boolean& value) {
   }
 }
 
+void setFeederTimersEnabled(const boolean& value) {
+  //
+  // enables/disables feeder timers execution
+  //
+  if (_isFeedingTimersEnabled != value) {
+    _isFeedingTimersEnabled = value;
+    #if (USE_EEPROM == true)
+      saveConfigurationFlag(EEPROM_FLAG_FEEDER_TIMERS_ENABLED_BIT, value);
+    #endif
+  }
+}
+
 void loadConfigurations(){
   //
   // loads configuration from EEPROM
@@ -1357,11 +1542,14 @@ void loadConfigurations(){
     
     // loads states flags
     byte states = EEPROM.read(EEPROM_FLAGS_ADDRESS);
-    _isTimersEnabled = bitRead(states, EEPROM_FLAG_TIMERS_ENABLED_BIT) == 1; 
-    
+    _isTimersEnabled = bitRead(states, EEPROM_FLAG_TIMERS_ENABLED_BIT) == 1;
+    _isFeedingTimersEnabled = bitRead(states, EEPROM_FLAG_FEEDER_TIMERS_ENABLED_BIT) == 1;
+        
     #if (DEBUG_MODE == true)
       Serial.print(F(" - timers enabled: "));
       Serial.print(toStr(_isTimersEnabled));
+      Serial.print(F(" - feeding timers enabled: "));
+      Serial.print(toStr(_isFeedingTimersEnabled));
     #endif
     
     // alarms bounds (min, max)
@@ -1384,14 +1572,6 @@ void loadConfigurations(){
       Serial.println(_alarmBoundWaterPhMax);
       Serial.print(F(" - ph min: "));
       Serial.println(_alarmBoundWaterPhMin);
-    #endif
-
-    // loads pressure reference
-    float p;
-    EEPROM.get(address, p);
-    #if (DEBUG_MODE == true)
-      Serial.print(F(" - historical atm pressure: "));
-      Serial.println(p);      
     #endif
 
     loadTimers();    
@@ -1461,8 +1641,8 @@ void saveConfigurations(const bool savingTimers = true) {
     
     // general state flags
     byte flags = EEPROM.read(EEPROM_FLAGS_ADDRESS);
-    bitWrite(flags, EEPROM_FLAG_LIGHT_BIT, _isLightsOnForced);
     bitWrite(flags, EEPROM_FLAG_TIMERS_ENABLED_BIT, _isTimersEnabled);
+    bitWrite(flags, EEPROM_FLAG_FEEDER_TIMERS_ENABLED_BIT, _isTimersEnabled);
     EEPROM.update(EEPROM_FLAGS_ADDRESS, flags);
 
     float value;
@@ -1488,10 +1668,10 @@ void saveConfigurations(const bool savingTimers = true) {
       EEPROM.put(address, _alarmBoundWaterPhMin);
     address+= sizeof(float);
     
-    // saves pressure reference
-    value = EEPROM.get(address, value);
-    if (value != _measuredAirPressure.average)
-      EEPROM.put(address, _measuredAirPressure.average);
+    // // saves pressure reference
+    // value = EEPROM.get(address, value);
+    // if (value != _measuredAirPressure.average)
+    //   EEPROM.put(address, _measuredAirPressure.average);
     
     if (savingTimers)
       saveTimers();
@@ -1518,10 +1698,10 @@ void saveTimers() {
     for (unsigned int i = 0; i < TIMERS_SIZE; i++) {     
       // for each timer, check if its active (and valid)
       if (RELAY_TIMERS[i].active && is_valid_timer(RELAY_TIMERS[i])) {
-        byte relay_index = RELAY_TIMERS[i].relay;
+        byte relayIndex = RELAY_TIMERS[i].relay;
         if (RELAY_TIMERS[i].enabled)
-          bitWrite(relay_index, 7, 1);
-        EEPROM.update(address++, relay_index);
+          bitWrite(relayIndex, 7, 1);
+        EEPROM.update(address++, relayIndex);
         EEPROM.update(address++, RELAY_TIMERS[i].turnOnHour);
         EEPROM.update(address++, RELAY_TIMERS[i].turnOnMinute);
         EEPROM.update(address++, RELAY_TIMERS[i].turnOffHour);
@@ -1546,6 +1726,8 @@ void loadDefaultConfigurations() {
   #endif
 
   _isTimersEnabled = USE_STANDALONE_TIMERS;
+  _isFeedingTimersEnabled = ENABLE_FEEDING_TIMER;
+
   // default alarms bounds
   _alarmBoundWaterTemperatureMax = DEFAULT_ALARM_BOUND_TEMP_MAX;
   _alarmBoundWaterTemperatureMin = DEFAULT_ALARM_BOUND_TEMP_MIN;
@@ -1607,10 +1789,6 @@ void loadDefaultTimers(){
     printTimers();
   #endif
 }
-
-
-
-
 //--------------------------------------------------------------------------------------------------
 //
 // reading sensors
@@ -1760,6 +1938,7 @@ void showDateTime() {
     unsigned int hour = now.hour();
 
     #if (DEBUG_MODE == true)
+      // shows date time at serial (debug)
       Serial.print(now.day(), DEC);
       Serial.print("/");
       Serial.print(now.month(), DEC);
@@ -1779,6 +1958,7 @@ void showDateTime() {
     #endif
 
     #if (USE_LCD_DISPLAY == true)
+      // shows date time at LCD display
       _lcd.setCursor(0, 0);
       _lcd.print(now.day(), DEC);
       _lcd.print("/");
@@ -1804,7 +1984,9 @@ void showDateTime() {
 
 void showAirTemperature1() {
   //
-  // Shows atmosferic data(1)
+  // Shows atmosferic data (1):
+  // - air temperature
+  // - humidity
   //
   #if (DEBUG_MODE == true)    
     Serial.print(TEXT_AIR_TEMPERATURE);
@@ -1828,7 +2010,9 @@ void showAirTemperature1() {
 
 void showAirTemperature2() {
   //
-  // Shows atmosferic data (2)
+  // Shows atmosferic data (2):
+  // - atmosferic pressure
+  // - altitude
   //
   #if (DEBUG_MODE == true)    
     Serial.print(TEXT_AIR_PRESSURE);
@@ -1931,7 +2115,10 @@ void showLocalWeatherForecast() {
 
 void showWaterTemperature(int idx) {
   //
-  // Shows temperature
+  // Shows temperature and specified statistic
+  // 
+  // parameters:
+  //    idx: 0 = shows min, 1 = shows max, 2 = shows average
   //  
   #if (DEBUG_MODE == true)
     Serial.print(TEXT_WATER_TEMPERATURE);
@@ -1986,26 +2173,25 @@ void showSystemFlags() {
   //
   unsigned int index = getRelayIndexByPin(RELAY_LIGHTS_PIN);
   bool lightsForcedOn = RELAY_FORCED_TURN_ON[index];
-
-  index = getRelayIndexByPin(RELAY_FEEDER_PIN);
-  bool feedForcedOn = RELAY_FORCED_TURN_ON[index];
-
+  
   #if (DEBUG_MODE == true)
     Serial.print(TEXT_LIGHTS);
     Serial.println((lightsForcedOn ? TEXT_ON : TEXT_TIMER));
-    
+        
     Serial.print(TEXT_FEED);
-    Serial.println((feedForcedOn ? TEXT_FEED : TEXT_OFF)); 
+    // feeder timer is forced off: only feed with buttons
+    Serial.println((_isFeedingTimersEnabled ? TEXT_OFF: TEXT_FEED)); 
   #endif 
 
   #if (USE_LCD_DISPLAY == true)
     _lcd.setCursor(0, 0);
     _lcd.print(TEXT_LIGHTS);
     _lcd.print((lightsForcedOn ? TEXT_ON : TEXT_TIMER));
-
+    
     _lcd.setCursor(0, 1);
     _lcd.print(TEXT_FEED);
-    _lcd.print((feedForcedOn ? TEXT_TIMER : TEXT_OFF)); 
+    // feeder timer is forced off: only feed with buttons
+    _lcd.print((_isFeedingTimersEnabled ? TEXT_OFF : TEXT_TIMER)); 
   #endif  
 }
 
@@ -2086,35 +2272,48 @@ unsigned int getStandaloneWeatherForecast(){
 //--------------------------------------------------------------------------------------------------
 #if (USE_STANDALONE_TIMERS == true)
 
-  // void handleTimers()
-  // {
-  //   //
-  //   // Handle scheduled tasks actions
-  //   //    
-  //   if (_status < STATUS_CYCLE_OFF) {
-  //     int hour = _now.hour();
+  bool checkInRange(const DateTime& now, const timer& t, const bool& checkTurnOnOnly = false) {
+    //
+    // returns True if the specified time ("now") is between timer "on" window
+    //
+    // "same day" timer, eg:
+    //   - current time:  05:00 am (outside range)
+    //   - turn on:  07:00 am
+    //   - current time:  08:00 am (inside range)
+    //   - turn off: 10:00 am
+    //   - current time:  11:00 am (outside range)
+    //
+    // "next day" timer, eg:
+    //   - current time:  19:00 pm (outside range)
+    //   - turn on:  20:00 pm
+    //   - current time:  23:00 pm (inside range)
+    //   - current time:  03:00 am (inside range)
+    //   - turn off: 05:00 am (next day)
+    //   - current time:  08:00 am (outside range)
+    //
+    unsigned int hour = now.hour(); 
+    unsigned int minute = now.minute();    
+    
+    
+    if (checkTurnOnOnly) {
+      // only checks for start hour:minute
+      return hour == t.turnOnHour && minute == t.turnOnMinute;
+    }
 
-  //     // lights timer, set LOW to turn on lights
-  //     bool lightOnTimer = hour > _timerLightStart && hour < _timerLightEnd ;
-  //     setRelay(RELAY_LIGHTS_PIN, lightOnTimer || _isLightsOnForced);
+    if (hour < t.turnOnHour || hour > t.turnOffHour)
+      // out of "turn on" hours
+      return false;
+        
+    // checks if before initial "turn on" minute
+    if (hour == t.turnOnHour && minute < t.turnOnMinute)
+      return false;
 
-  //     // UV timer (8h), set LOW to turn on UV lamp)
-  //     setRelay(RELAY_FILTER_UV_PIN, hour > _timerUvStart && hour < _timerUvEnd);
+    // checks if after final "turn on" minute
+    if (hour == t.turnOffHour && minute >= t.turnOffMinute)
+      return false;
 
-  //     // Feeding timer: 7, 12 and 18h
-  //     if (hour == _timerFeed1 || hour == _timerFeed2 || hour == _timerFeed3) {
-  //       if (!_statusFeeded)
-  //         feed();
-  //     }
-  //     else
-  //       _statusFeeded = false;
-  //   }
-  //   else
-  //   {
-  //     // non usual mode: just ensures UV turn off
-  //     setRelay(RELAY_FILTER_UV_PIN, false);
-  //   }
-  // }
+    return true;
+  }
 
   void runTimers() {
     //
@@ -2125,7 +2324,7 @@ unsigned int getStandaloneWeatherForecast(){
       return;
 
     if (_status >= STATUS_CYCLE_OFF) {
-      // non usual mode: just ensures UV turn off
+      // non usual mode: just ensures UV filter is turned off
       setRelay(RELAY_FILTER_UV_PIN, false);
       return;
     }
@@ -2138,75 +2337,89 @@ unsigned int getStandaloneWeatherForecast(){
         #endif
         return;
       }
+      // gets current date & time (happy day)
       DateTime now = _clock.now();
     #else
       #if (DEBUG_MODE == true) 
-        // DEBUG ONLY
+        // DEBUG ONLY: testing timers without RTC connected
         Serial.println(F(" - checking timers - "));
         DateTime now = DateTime(2023, 9, 1, 6, 1, 9);  
       #else
-        // nothing to do!
+        // no RTC / no debug: nothing to do!
         return;
       #endif
     #endif
-        
+
+
+    bool shouldFeed = false;
     for (unsigned int i = 0; i < TIMERS_SIZE; i++) {    
       // for each timer, check if its enabled, active and valid
       if (RELAY_TIMERS[i].enabled 
         && RELAY_TIMERS[i].active 
         && is_valid_timer(RELAY_TIMERS[i])) {
 
-        // retrives relay index
-        unsigned int relay_index = RELAY_TIMERS[i].relayIndex;
-        // checks if the relay should be on
-        bool shouldBeOn = checkInRange(now, RELAY_TIMERS[i]) || RELAY_FORCED_TURN_ON[relay_index];
+        // retrieves relay index and pin
+        unsigned int relayIndex = RELAY_TIMERS[i].relayIndex;
+        unsigned int relayPin = RELAY_PINS[relayIndex];
+
+        //
+        // handles special cases first!
+        //
+        #if (ENABLE_LIGHTS_TIMER == false)
+          if (relayPin == RELAY_LIGHTS_PIN)
+            // disabled
+            continue;
+        #endif
+        #if (ENABLE_UV_FILTER_TIMER == false)
+          if (relayPin == RELAY_FILTER_UV_PIN)
+            // disabled
+            continue;
+        #endif
+        #if (ENABLE_FEEDING_TIMER == false)
+          if (relayPin == RELAY_FEEDER_PIN)
+            // disabled
+            continue;
+        #else          
+          #if (ENABLE_FEEDING == true)
+            // feeder relay behaves different on ENABLE_FEEDING mode
+            if (relayPin == RELAY_FEEDER_PIN) {
+              shouldFeed = shouldFeed || checkInRange(now, RELAY_TIMERS[i], true);
+              continue;
+            }
+          #endif
+        #endif
+
+        // checks if the relay should be on (happy day)
+        bool shouldBeOn = checkInRange(now, RELAY_TIMERS[i]) || RELAY_FORCED_TURN_ON[relayIndex];
         
-        if (!RELAY_STATES[relay_index] && shouldBeOn){
+        if (!RELAY_STATES[relayIndex] && shouldBeOn){
           // turns on relay (should be on and is currently off)
-          setRelay(relay_index, true, true);
+          setRelay(relayIndex, true, true);
           //updateStates();
 
-        } else if (RELAY_STATES[relay_index] && !shouldBeOn){
+        } else if (RELAY_STATES[relayIndex] && !shouldBeOn){
           // turns off relay (should be off and is currently on)
-          setRelay(relay_index, false, true);
+          setRelay(relayIndex, false, true);
           //updateStates();
         }
       }
     }
+
+    #if (ENABLE_FEEDING == true)
+      //
+      // ensures that feeding routine will be called ONE time
+      // per timer using the "_statusFeeded" semaphore!
+      //
+      if (shouldFeed){        
+        if (!_statusFeeded)
+          feed();
+      }
+      else
+        _statusFeeded = false;
+    #endif
   }
 
-  bool checkInRange(const DateTime& now, const timer& t){
-    //
-    // returns True if the specified time is between timer "turn on" window
-    //
-    unsigned int hour = now.hour(); 
-    // checks if specified is inside timer "hour" range
-    //
-    // "same day" timer, eg:
-    //   - turn on:  07:00 am
-    //   - current:  08:00 am (inside range)
-    //   - turn off: 10:00 am
-    // "next day" timer, eg:
-    //   - turn on:  20:00 pm
-    //   - current:  23:00 pm (inside range)
-    //   - turn off: 05:00 am (next day)
-    //
-    if (hour < t.turnOnHour || hour > t.turnOffHour)
-      // out of "turn on" hours
-      return false;
-    
-    unsigned int minute = now.minute();
-    // checks if before initial minute
-    if (hour == t.turnOnHour && minute < t.turnOnMinute)
-      return false;
-
-    // checks if after final minute
-    if (hour == t.turnOffHour && minute >= t.turnOffMinute)
-      return false;
-
-    return true;
-  }
-
+  
   void cleanTimers() {
     //
     // reset all timers! 
@@ -2415,10 +2628,12 @@ bool updateTimer(unsigned int timerId, const byte& hourOn, const byte& minuteOn,
       Serial.print((unsigned int)timer.turnOnHour);
       Serial.print(F(":"));
       Serial.print((unsigned int)timer.turnOnMinute);
-      Serial.print(F(", timer off: "));
-      Serial.print((unsigned int)timer.turnOffHour);
-      Serial.print(F(":"));
-      Serial.println((unsigned int)timer.turnOffMinute);
+      if (!ENABLE_FEEDING || relayPin != RELAY_FEEDER_PIN){
+        Serial.print(F(", timer off: "));
+        Serial.print((unsigned int)timer.turnOffHour);
+        Serial.print(F(":"));
+        Serial.println((unsigned int)timer.turnOffMinute);
+      }
     }
 
   #endif
@@ -2552,50 +2767,6 @@ bool updateTimer(unsigned int timerId, const byte& hourOn, const byte& minuteOn,
     }
   }
 #endif
-//--------------------------------------------------------------------------------------------------
-//
-// feeding
-//
-//--------------------------------------------------------------------------------------------------
-void feed() {  
-  //
-  // Feeding procedure
-  //
-  #if (ENABLE_FEEDING_TIMER && USE_RELAYS)     
-  
-    #if (FEEDING_AS_PUSH_BUTTON == true)
-      //
-      // this configuration assumes to control an external feeder (Boyu - that I already have), 
-      // connect the "feed" push button (both terminals) of the external feeder to the 
-      // normally open relay RELAY_FEEDER_PIN. Therefore the relay can simulate an user button 
-      // press.
-      //         
-      unsigned int index = getRelayIndexByPin(RELAY_FEEDER_PIN);
-      // keeps state off
-      RELAY_STATES[index] = false;
-
-      digitalWrite(RELAY_FEEDER_PIN, HIGH);
-      delay(100);
-      
-      // set pin=LOW to turn on relay 
-      // (short circuit the Boyu feeder push button, simulating user pressing)
-      digitalWrite(RELAY_FEEDER_PIN, LOW);
-      delay(300);
-
-      digitalWrite(RELAY_FEEDER_PIN, HIGH);
-      delay(300);    
-    #else
-      //
-      // TODO: Uses a step motor as feeder
-      //
-
-
-    #endif
-    // flag for feed complete
-    _statusFeeded = true;
-
-  #endif
-}
 //--------------------------------------------------------------------------------------------------
 //
 // aquarium maintenance routines (PWC, manual cleaning)
@@ -2806,7 +2977,7 @@ void restart() {
     setRelay(RELAY_DRAIN_PUMP_PIN, false);    
     setRelay(RELAY_COOLER_FAN_PIN, false);
     setRelay(RELAY_WATER_REPOSITION_PUMP_PIN, false);  
-    #if (FEEDING_AS_PUSH_BUTTON == true)
+    #if (ENABLE_FEEDING == true)
       digitalWrite(RELAY_FEEDER_PIN, HIGH);      
     #else
       setRelay(RELAY_FEEDER_PIN, false); 
@@ -2893,7 +3064,12 @@ void restart() {
     else if (sender == &chkCoolerSwitch)
       setRelay(RELAY_COOLER_FAN_PIN, state, false, true);      
     else if (sender == &chkTimersSwitch) {
-      _isTimersEnabled = state;
+      setTimersEnabled(state);
+      sender->setState(state); // report state back to the Home Assistant
+      sendStatesMessage();
+    }
+    else if (sender == &chkFeederTimersSwitch) {
+      setFeederTimersEnabled(state);
       sender->setState(state); // report state back to the Home Assistant
       sendStatesMessage();
     }        
@@ -2933,6 +3109,9 @@ void restart() {
     else if (sender == &lblPhMin) {        
         _alarmBoundWaterPhMin = value.toFloat();
     }
+    else if (sender == &lblFeederTurns) {        
+        _feederTurns = value.toInt16();
+    }
     sender->setState(value);
   }
 
@@ -2967,6 +3146,8 @@ void restart() {
     
     // internal states
     json += String(F("\"timers_enabled\":")) + toStr(_isTimersEnabled) + end;
+    json += String(F("\"feeding_timers_enabled\":")) + toStr(_isFeedingTimersEnabled) + end;
+    json += String(F("\"feeder_turns\":")) + String(_feederTurns) + end;
   
     // measurements
     json += toStr(_measuredWaterTemperature, F("temp"));
@@ -2981,10 +3162,12 @@ void restart() {
     json += String(F("\"relays\": {"));    
     for (unsigned int i = 0; i < RELAY_SIZE; i++) {
       unsigned int relayPin = RELAY_PINS[i];
-      String relayStateStr = F("\"[RELAY]\": \"[STATE]\", ");
-      relayStateStr.replace(F("[RELAY]"), getRelayNameByPin(relayPin));
-      relayStateStr.replace(F("[STATE]"), toStr(RELAY_STATES[i]));
-      json += relayStateStr;    
+      if (!ENABLE_FEEDING || relayPin != RELAY_FEEDER_PIN){
+        String relayStateStr = F("\"[RELAY]\": \"[STATE]\", ");
+        relayStateStr.replace(F("[RELAY]"), getRelayNameByPin(relayPin));
+        relayStateStr.replace(F("[STATE]"), toStr(RELAY_STATES[i]));
+        json += relayStateStr;    
+      }
     }          
     // timers
     json += String(F("}, \"timers\": {"));
@@ -3131,200 +3314,212 @@ void restart() {
       return true;
     }
 
-  if (command == F("delete all timers")){
-    // deletes all timers
-    #if (USE_STANDALONE_TIMERS == true)      
-      // clean timers
-      cleanTimers();
-      // saves (no timers)
-      saveTimers();
-      // disables timers
-      setTimersEnabled(false);
+    if (command == F("enable feeder")){
+      // enables timers (and saves it at EEPROM)
+      setFeederTimersEnabled(true);
       return true;
-    #else
-      return false;
-    #endif
-  }
-
-  if (command == F("default timers")){
-    #if (USE_STANDALONE_TIMERS == true)
-      // loads default timers
-      loadDefaultTimers();   
-      // saves   
-      saveTimers();      
-      // enable timers
-      setTimersEnabled(true);
-      return true;
-    #else
-      return false;
-    #endif
-  }
-
-  unsigned int relayPin;
-  unsigned int timerId;
-  unsigned int len = command.length();
-
-  if (command.startsWith(F("turn on: "))){
-    //
-    // turn on: [light]
-    //
-    relayPin = getRelayPinByName(command);    
-    if (FEEDING_AS_PUSH_BUTTON && relayPin == RELAY_FEEDER_PIN)
-      // do not set feeder relay at "feed as push button" mode
-      return true;
+    }
     
-    setRelay(relayPin, true, false, true);
-    return true;
-  }
-
-  if (command.startsWith(F("turn off: "))){
-    //
-    // turn off: [light]
-    //
-    relayPin = getRelayPinByName(command);
-    if (FEEDING_AS_PUSH_BUTTON && relayPin == RELAY_FEEDER_PIN)
-      // do not set feeder relay at "feed as push button" mode
+    if (command == F("disable feeder")){
+      // disables timers (and saves it at EEPROM)
+      setFeederTimersEnabled(false);
       return true;
+    }
 
-    setRelay(relayPin, false, false, true);
-    return true;
-  }
+    if (command == F("delete all timers")){
+      // deletes all timers
+      #if (USE_STANDALONE_TIMERS == true)      
+        // clean timers
+        cleanTimers();
+        // saves (no timers)
+        saveTimers();
+        // disables timers
+        setTimersEnabled(false);
+        return true;
+      #else
+        return false;
+      #endif
+    }
 
-  if (command.startsWith(F("enable timer: ")) && len > 14){
-    //
-    // enables timer by "id"
-    // message format: "enable timer: 01"
-    //    
-    #if (DEBUG_MODE == true)
-      // checks if "timer id" was parsed correctly 
-      Serial.print(F("id: ["));
-      Serial.print(command.substring(14, len));
-      Serial.println(F("]"));
-    #endif
+    if (command == F("default timers")){
+      #if (USE_STANDALONE_TIMERS == true)
+        // loads default timers
+        loadDefaultTimers();   
+        // saves   
+        saveTimers();      
+        // enable timers
+        setTimersEnabled(true);
+        return true;
+      #else
+        return false;
+      #endif
+    }
+
+    unsigned int relayPin;
+    unsigned int timerId;
+    unsigned int len = command.length();
+
+    if (command.startsWith(F("turn on: "))){
+      //
+      // turn on: [light]
+      //
+      relayPin = getRelayPinByName(command);    
+      if (FEEDING_AS_PUSH_BUTTON && relayPin == RELAY_FEEDER_PIN)
+        // do not set feeder relay at "feed as push button" mode
+        return true;
+      
+      setRelay(relayPin, true, false, true);
+      return true;
+    }
+
+    if (command.startsWith(F("turn off: "))){
+      //
+      // turn off: [light]
+      //
+      relayPin = getRelayPinByName(command);
+      if (FEEDING_AS_PUSH_BUTTON && relayPin == RELAY_FEEDER_PIN)
+        // do not set feeder relay at "feed as push button" mode
+        return true;
+
+      setRelay(relayPin, false, false, true);
+      return true;
+    }
+
+    if (command.startsWith(F("enable timer: ")) && len > 14){
+      //
+      // enables timer by "id"
+      // message format: "enable timer: 01"
+      //    
+      #if (DEBUG_MODE == true)
+        // checks if "timer id" was parsed correctly 
+        Serial.print(F("id: ["));
+        Serial.print(command.substring(14, len));
+        Serial.println(F("]"));
+      #endif
+      
+      timerId = command.substring(14, len).toInt();
+      enableTimer(timerId);
+      return true;
+    }
+
+    if (command.startsWith(F("disable timer: ")) && len > 15){
+      //
+      // disables timer by "id"
+      // message format: "disable timer: 01"
+      //
+      #if (DEBUG_MODE == true)
+        // checks if "timer id" was parsed correctly
+        Serial.print(F("id: ["));
+        Serial.print(command.substring(15, len));
+        Serial.println(F("]"));
+      #endif
+
+      timerId = command.substring(15, len).toInt();
+      disableTimer(timerId);
+      return true;
+    }
+
+    if (command.startsWith(F("delete timer: ")) && len > 14){
+      //
+      // deletes timer by "id"
+      // message format: "delete timer: 01"
+      //
+      #if (DEBUG_MODE == true)
+        // checks if "timer id" was parsed correctly
+        Serial.print(F("id: ["));
+        Serial.print(command.substring(14, len));
+        Serial.println(F("]"));
+      #endif
+      
+      timerId = command.substring(14, len).toInt();
+      deleteTimer(timerId);
+      return true;
+    }
+
+    byte hourTurnOn;
+    byte minuteTurnOn;
+    byte hourTurnOff;
+    byte minuteTurnOff;
+    String relayName;
+    if (command.startsWith(F("add timer: ")) && len > 23){
+      //
+      // creates new timer
+      // message format: "add timer: hh mm hh mm relay"
+      //
+      #if (DEBUG_MODE == true)
+        // checks parsing
+        Serial.print(F("h: ["));
+        Serial.print(command.substring(12, 14));
+        Serial.println(F("]"));
+
+        Serial.print(F("m: ["));
+        Serial.print(command.substring(15, 17));
+        Serial.println(F("]"));
+
+        Serial.print(F("h: ["));
+        Serial.print(command.substring(18, 20));
+        Serial.println(F("]"));
+
+        Serial.print(F("m: ["));
+        Serial.print(command.substring(21, 23));
+        Serial.println(F("]"));
     
-    timerId = command.substring(14, len).toInt();
-    enableTimer(timerId);
-    return true;
-  }
+        Serial.print(F("relay: ["));
+        Serial.print(command.substring(24, len));
+        Serial.println(F("]"));
+      #endif
 
-  if (command.startsWith(F("disable timer: ")) && len > 15){
-    //
-    // disables timer by "id"
-    // message format: "disable timer: 01"
-    //
-    #if (DEBUG_MODE == true)
-      // checks if "timer id" was parsed correctly
-      Serial.print(F("id: ["));
-      Serial.print(command.substring(15, len));
-      Serial.println(F("]"));
-    #endif
+      // parse parameters
+      hourTurnOn = (byte)(command.substring(12, 14).toInt()); // turn on hour [0-23]
+      minuteTurnOn = (byte)(command.substring(15, 17).toInt()); // turn on minute [0-59]
+      hourTurnOff = (byte)(command.substring(18, 20).toInt()); // turn off hour [0-23]
+      minuteTurnOn = (byte)(command.substring(21, 23).toInt()); // turn off minute [0-59]
+      relayName = command.substring(24, len); // relay name [light]
+      relayPin = getRelayPinByName(relayName); // relay pin number
 
-    timerId = command.substring(15, len).toInt();
-    disableTimer(timerId);
-    return true;
-  }
+      return addTimer(relayPin, hourTurnOn, minuteTurnOn, hourTurnOff, minuteTurnOff);
+    }
 
-  if (command.startsWith(F("delete timer: ")) && len > 14){
-    //
-    // deletes timer by "id"
-    // message format: "delete timer: 01"
-    //
-    #if (DEBUG_MODE == true)
-      // checks if "timer id" was parsed correctly
-      Serial.print(F("id: ["));
-      Serial.print(command.substring(14, len));
-      Serial.println(F("]"));
-    #endif
-    
-    timerId = command.substring(14, len).toInt();
-    deleteTimer(timerId);
-    return true;
-  }
+    if (command.startsWith(F("update timer: ")) && len == 28){
+      //
+      // creates new timer
+      // message format: "update timer: id hh mm hh mm"
+      //
+      #if (DEBUG_MODE == true)      
+        // checks parsing
+        Serial.print(F("timer id: ["));
+        Serial.print(command.substring(14, 16));
+        Serial.println(F("]")); 
 
-  byte hourTurnOn;
-  byte minuteTurnOn;
-  byte hourTurnOff;
-  byte minuteTurnOff;
-  String relayName;
-  if (command.startsWith(F("add timer: ")) && len > 23){
-    //
-    // creates new timer
-    // message format: "add timer: hh mm hh mm relay"
-    //
-    #if (DEBUG_MODE == true)
-      // checks parsing
-      Serial.print(F("h: ["));
-      Serial.print(command.substring(12, 14));
-      Serial.println(F("]"));
+        Serial.print(F("h: ["));
+        Serial.print(command.substring(17, 19));
+        Serial.println(F("]")); 
 
-      Serial.print(F("m: ["));
-      Serial.print(command.substring(15, 17));
-      Serial.println(F("]"));
+        Serial.print(F("m: ["));
+        Serial.print(command.substring(20, 22));
+        Serial.println(F("]")); 
 
-      Serial.print(F("h: ["));
-      Serial.print(command.substring(18, 20));
-      Serial.println(F("]"));
+        Serial.print(F("h: ["));
+        Serial.print(command.substring(23, 25));
+        Serial.println(F("]")); 
 
-      Serial.print(F("m: ["));
-      Serial.print(command.substring(21, 23));
-      Serial.println(F("]"));
-  
-      Serial.print(F("relay: ["));
-      Serial.print(command.substring(24, len));
-      Serial.println(F("]"));
-    #endif
+        Serial.print(F("m: ["));
+        Serial.print(command.substring(26, 28));
+        Serial.println(F("]")); 
+      #endif
 
-    // parse parameters
-    hourTurnOn = (byte)(command.substring(12, 14).toInt()); // turn on hour [0-23]
-    minuteTurnOn = (byte)(command.substring(15, 17).toInt()); // turn on minute [0-59]
-    hourTurnOff = (byte)(command.substring(18, 20).toInt()); // turn off hour [0-23]
-    minuteTurnOn = (byte)(command.substring(21, 23).toInt()); // turn off minute [0-59]
-    relayName = command.substring(24, len); // relay name [light]
-    relayPin = getRelayPinByName(relayName); // relay pin number
+      // parse parameters
+      timerId = command.substring(14, 16).toInt(); // timer id [0-49]
+      hourTurnOn = (byte)(command.substring(17, 19).toInt()); // turn on hour [0-23]
+      minuteTurnOn = (byte)(command.substring(20, 22).toInt()); // turn on minute [0-59]
+      hourTurnOff = (byte)(command.substring(23, 25).toInt()); // turn off hour [0-23]
+      minuteTurnOff = (byte)(command.substring(26, 28).toInt()); // turn off minute [0-59]
 
-    return addTimer(relayPin, hourTurnOn, minuteTurnOn, hourTurnOff, minuteTurnOff);
-  }
+      return updateTimer(timerId, hourTurnOn, minuteTurnOn, hourTurnOff, minuteTurnOff);
+    }
 
-  if (command.startsWith(F("update timer: ")) && len == 28){
-    //
-    // creates new timer
-    // message format: "update timer: id hh mm hh mm"
-    //
-    #if (DEBUG_MODE == true)      
-      // checks parsing
-      Serial.print(F("timer id: ["));
-      Serial.print(command.substring(14, 16));
-      Serial.println(F("]")); 
-
-      Serial.print(F("h: ["));
-      Serial.print(command.substring(17, 19));
-      Serial.println(F("]")); 
-
-      Serial.print(F("m: ["));
-      Serial.print(command.substring(20, 22));
-      Serial.println(F("]")); 
-
-      Serial.print(F("h: ["));
-      Serial.print(command.substring(23, 25));
-      Serial.println(F("]")); 
-
-      Serial.print(F("m: ["));
-      Serial.print(command.substring(26, 28));
-      Serial.println(F("]")); 
-    #endif
-
-    // parse parameters
-    timerId = command.substring(14, 16).toInt(); // timer id [0-49]
-    hourTurnOn = (byte)(command.substring(17, 19).toInt()); // turn on hour [0-23]
-    minuteTurnOn = (byte)(command.substring(20, 22).toInt()); // turn on minute [0-59]
-    hourTurnOff = (byte)(command.substring(23, 25).toInt()); // turn off hour [0-23]
-    minuteTurnOff = (byte)(command.substring(26, 28).toInt()); // turn off minute [0-59]
-
-    return updateTimer(timerId, hourTurnOn, minuteTurnOn, hourTurnOff, minuteTurnOff);
-  }
-
-  return false;
-}   
+    return false;
+  }   
 
 #endif
 
