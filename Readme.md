@@ -39,17 +39,17 @@
 - fully integrated with home assistant (MQTT) or standalone functionality (*optional, see [config flags](https:/github.com/fortalbrz/aquarioino/blob/main/README.md#configuration-flags)*)
 - automation of the partial water change (PWC) routine (*optional, see [config flags](https:/github.com/fortalbrz/aquarioino/blob/main/README.md#configuration-flags)*)
 - automation of water replenishment, due evaporation losses (*optional, see [config flags](https:/github.com/fortalbrz/aquarioino/blob/main/README.md#configuration-flags)*)
-- lightning and UV filter turn on/off timers (*optional, see [config flags](https://github.com/fortalbrz/aquarioino/blob/main/README.md#configuration-flags)*)
-- water temperature control (heating/cooler fan) (*optional, see [config flags](https://github.com/fortalbrz/aquarioino/blob/main/README.md#configuration-flags)*)
-- pH measurement (*optional, see [config flags](https://github.com/fortalbrz/aquarioino/blob/main/README.md#configuration-flags)*)
-- up to 200 standalone timers, fully remotely programmable with MQTT: (*optional, see [config flags](https://github.com/fortalbrz/aquarioino/blob/main/README.md#configuration-flags)*)
+- lightning and UV filter turn on/off timers (*optional, see [config flags](https://github.com/fortalbrz/aquarioino#configuration-flags)*)
+- water temperature control (heating/cooler fan) (*optional, see [config flags](https://github.com/fortalbrz/aquarioino#configuration-flags)*)
+- pH measurement (*optional, see [config flags](https://github.com/fortalbrz/aquarioino#configuration-flags)*)
+- up to 200 standalone timers, fully remotely programmable with MQTT: (*optional, see [config flags](https://github.com/fortalbrz/aquarioino#configuration-flags)*)
   - lightning, UV filter, heater, cooler, pumps (i.e., all relays) turn on/off timers  
   - feeding timers
-- alarms: (*optional, see [config flags](https://github.com/fortalbrz/aquarioino/blob/main/README.md#configuration-flags)*)
+- alarms: (*optional, see [config flags](https://github.com/fortalbrz/aquarioino#configuration-flags)*)
   - temperature (max/min)
   - pH (max/min)
   - water levels (aquarium low water level, sump pump low water level)
-- home assistant sensors: (*optional, see [config flags](https://github.com/fortalbrz/aquarioino/blob/main/README.md#configuration-flags)*)
+- home assistant sensors: (*optional, see [config flags](https://github.com/fortalbrz/aquarioino#configuration-flags)*)
   - water temperature
   - water pH
   - water levels (aquarium and sump)
@@ -57,7 +57,7 @@
   - air humidity
   - air pressure
   - weather station forecasting
-- home assistant switches: (*optional, see [config flags](https://github.com/fortalbrz/aquarioino/blob/main/README.md#configuration-flags)*)
+- home assistant switches: (*optional, see [config flags](https://github.com/fortalbrz/aquarioino#configuration-flags)*)
   - lightning switch
   - feeding button
   - UV filter switch
@@ -67,34 +67,34 @@
   - enables/disables timers and feeding switches
   - start partial water change (PWC) routine button 
   - turn off / restart / "manual cleaning" / save configurations buttons
-- weather station (standalone weather forecasting) (*optional, see [config flags](https://github.com/fortalbrz/aquarioino/blob/main/README.md#configuration-flags)*, requires the barometer sensor)
-- displays information on LCD 16 x 2 (*optional, see [config flags](https://github.com/fortalbrz/aquarioino/blob/main/README.md#configuration-flags)*)
-- push buttons: (*optional, see [config flags](https://github.com/fortalbrz/aquarioino/blob/main/README.md#configuration-flags)*)
+- weather station (standalone weather forecasting) (*optional, see [config flags](https://github.com/fortalbrz/aquarioino#configuration-flags)*, requires the barometer sensor)
+- displays information on LCD 16 x 2 (*optional, see [config flags](https://github.com/fortalbrz/aquarioino#configuration-flags)*)
+- push buttons: (*optional, see [config flags](https://github.com/fortalbrz/aquarioino#configuration-flags)*)
   - lightning turn on/off button
   - partial water change (PWC) routine button
   - manual cleaning button 
   - turn off button
   - restart  button
 - protects sump pump of running out of water
-- local time synchronization with home assistant: home assistant as "time server" (*optional, see [config flags](https://github.com/fortalbrz/aquarioino/blob/main/README.md#configuration-flags)*)
+- local time synchronization with home assistant: home assistant as "time server" (*optional, see [config flags](https://github.com/fortalbrz/aquarioino#configuration-flags)*)
 
 
  ## Materials
  
  - [1 arduino mega 2560 pro (mini)](https://produto.mercadolivre.com.br/MLB-2012119523-arduino-mega-pro-mini-lacrado-_JM)
- - [1 temperature sensor DS18B20](https://produto.mercadolivre.com.br/MLB-1659212606-sensor-de-temperatura-ds18b20-prova-dagua-arduino-_JM) (waterproof) and 1 resistor 4.7k olhms (*optional, see [config flags](https://github.com/fortalbrz/aquarioino/blob/main/README.md#configuration-flags)*)
- - [1 temperature and humidity sensor DHT11](https://produto.mercadolivre.com.br/MLB-688214170-sensor-de-umidade-e-temperatura-dht11-com-pci-pic-arduino-_JM) and 1 resistor 10k olhms (*optional, see [config flags](https://github.com/fortalbrz/aquarioino/blob/main/README.md#configuration-flags)*)
- - [1 barometer sensor BMP180](https://produto.mercadolivre.com.br/MLB-1335729819-barmetro-bmp180-sensor-de-presso-e-temperatura-arduino-_JM) (*optional, see [config flags](https://github.com/fortalbrz/aquarioino/blob/main/README.md#configuration-flags)*)
- - [1 pH sensor PH4502C](https://produto.mercadolivre.com.br/MLB-1894057619-modulo-sensor-de-ph-ph4502c-com-eletrodo-sonda-bnc-arduino-_JM) (*optional, see [config flags](https://github.com/fortalbrz/aquarioino/blob/main/README.md#configuration-flags)*)
- - [1 relay module with 8 channels (5v)](https://produto.mercadolivre.com.br/MLB-1758954385-modulo-rele-rele-5v-8-canais-para-arduino-pic-raspberry-pi-_JM) (*optional, see [config flags](https://github.com/fortalbrz/aquarioino/blob/main/README.md#configuration-flags)*)
- - [2 float water level sensors](https://produto.mercadolivre.com.br/MLB-1540418150-sensor-de-nivel-de-agua-boia-para-arduino-esp8266-esp32-_JM) and 2 x resistors 220 olhm  (*optional, see [config flags](https://github.com/fortalbrz/aquarioino/blob/main/README.md#configuration-flags)*)
- - [1 cooler fan 12v](https://produto.mercadolivre.com.br/MLB-777458962-micro-ventilador-80x80x25-gc-fan-cooler-12v-015a-80mm-_JM) (*optional, see [config flags](https://github.com/fortalbrz/aquarioino/blob/main/README.md#configuration-flags)*)
- - [2 immersible flow water pump](https://produto.mercadolivre.com.br/MLB-2205913740-motor-bomba-submersa-para-aquario-fontes-agua-bivolt-_JM) (cheap / low flow pump of around 3w - *optional, see [config flags](https://github.com/fortalbrz/aquarioino/blob/main/README.md#configuration-flags)*)
- - [1 external water pump 12v](https://produto.mercadolivre.com.br/MLB-2138007025-mini-bomba-6v-a-12v-agua-ar-vacuo-aquario-rs-385-_JM) (*water / air / vacuum*, i.e. "water reposition" pump - *optional, see [config flags](https://github.com/fortalbrz/aquarioino/blob/main/README.md#configuration-flags)*)
- - [1 LCD 16 x 2 display module](https://produto.mercadolivre.com.br/MLB-2679096309-display-lcd-16x2-1602-fundo-verde-_JM) and 1 trimpot 10k olhm (*optional, see [config flags](https://github.com/fortalbrz/aquarioino/blob/main/README.md#configuration-flags)*) 
- - [6 tactile push button keys](https://produto.mercadolivre.com.br/MLB-1858468268-kit-10x-chave-tactil-push-button-6x6x5mm-arduino-eletrnica-_JM) and 6 x resistors 1k olhm (*optional, see [config flags](https://github.com/fortalbrz/aquarioino/blob/main/README.md#configuration-flags)*)
+ - [1 temperature sensor DS18B20](https://produto.mercadolivre.com.br/MLB-1659212606-sensor-de-temperatura-ds18b20-prova-dagua-arduino-_JM) (waterproof) and 1 resistor 4.7k olhms (*optional, see [config flags](https://github.com/fortalbrz/aquarioino#configuration-flags)*)
+ - [1 temperature and humidity sensor DHT11](https://produto.mercadolivre.com.br/MLB-688214170-sensor-de-umidade-e-temperatura-dht11-com-pci-pic-arduino-_JM) and 1 resistor 10k olhms (*optional, see [config flags](https://github.com/fortalbrz/aquarioino#configuration-flags)*)
+ - [1 barometer sensor BMP180](https://produto.mercadolivre.com.br/MLB-1335729819-barmetro-bmp180-sensor-de-presso-e-temperatura-arduino-_JM) (*optional, see [config flags](https://github.com/fortalbrz/aquarioino#configuration-flags)*)
+ - [1 pH sensor PH4502C](https://produto.mercadolivre.com.br/MLB-1894057619-modulo-sensor-de-ph-ph4502c-com-eletrodo-sonda-bnc-arduino-_JM) (*optional, see [config flags](https://github.com/fortalbrz/aquarioino#configuration-flags)*)
+ - [1 relay module with 8 channels (5v)](https://produto.mercadolivre.com.br/MLB-1758954385-modulo-rele-rele-5v-8-canais-para-arduino-pic-raspberry-pi-_JM) (*optional, see [config flags](https://github.com/fortalbrz/aquarioino#configuration-flags)*)
+ - [2 float water level sensors](https://produto.mercadolivre.com.br/MLB-1540418150-sensor-de-nivel-de-agua-boia-para-arduino-esp8266-esp32-_JM) and 2 x resistors 220 olhm  (*optional, see [config flags](https://github.com/fortalbrz/aquarioino#configuration-flags)*)
+ - [1 cooler fan 12v](https://produto.mercadolivre.com.br/MLB-777458962-micro-ventilador-80x80x25-gc-fan-cooler-12v-015a-80mm-_JM) (*optional, see [config flags](https://github.com/fortalbrz/aquarioino#configuration-flags)*)
+ - [2 immersible flow water pump](https://produto.mercadolivre.com.br/MLB-2205913740-motor-bomba-submersa-para-aquario-fontes-agua-bivolt-_JM) (cheap / low flow pump of around 3w - *optional, see [config flags](https://github.com/fortalbrz/aquarioino#configuration-flags)*)
+ - [1 external water pump 12v](https://produto.mercadolivre.com.br/MLB-2138007025-mini-bomba-6v-a-12v-agua-ar-vacuo-aquario-rs-385-_JM) (*water / air / vacuum*, i.e. "water reposition" pump - *optional, see [config flags](https://github.com/fortalbrz/aquarioino#configuration-flags)*)
+ - [1 LCD 16 x 2 display module](https://produto.mercadolivre.com.br/MLB-2679096309-display-lcd-16x2-1602-fundo-verde-_JM) and 1 trimpot 10k olhm (*optional, see [config flags](https://github.com/fortalbrz/aquarioino#configuration-flags)*) 
+ - [6 tactile push button keys](https://produto.mercadolivre.com.br/MLB-1858468268-kit-10x-chave-tactil-push-button-6x6x5mm-arduino-eletrnica-_JM) and 6 x resistors 1k olhm (*optional, see [config flags](https://github.com/fortalbrz/aquarioino#configuration-flags)*)
  - [6 female recessed sockets](https://produto.mercadolivre.com.br/MLB-1844503844-6-tomada-embutir-fmea-preta-3-pinos-10a-painel-aparelho-_JM) (*optional: pretty relay outputs on wooden case...*) 
- - [1 stepper motor with driver](https://produto.mercadolivre.com.br/MLB-2205913740-motor-bomba-submersa-para-aquario-fontes-agua-bivolt-_JM) (*optional, see [config flags](https://github.com/fortalbrz/aquarioino/blob/main/README.md#configuration-flags)*)
+ - [1 stepper motor with driver](https://produto.mercadolivre.com.br/MLB-2205913740-motor-bomba-submersa-para-aquario-fontes-agua-bivolt-_JM) (*optional, see [config flags](https://github.com/fortalbrz/aquarioino#configuration-flags)*)
  - 1 led and resistor 10k olhm (*optional: indicates* **power on**) 
  - 1 power source 8v 1A (any voltage between 6 V and 9 V: arduino power source, i.e., Vin)
  - 1 power source 12v 1A (optional: cooler and water pump independent 12v power source)
@@ -132,7 +132,7 @@ The water levels sensors are used for:
  - automation of water replenishment due evaporation losses
  - automation of the partial water change (PWC) routine
 
-The water levels sensors are optional, in the sense that their use can be disabled using the [configuration flags](https://github.com/fortalbrz/aquarioino/blob/main/README.md#configuration-flags). 
+The water levels sensors are optional, in the sense that their use can be disabled using the [configuration flags](https://github.com/fortalbrz/aquarioino#configuration-flags). 
 However, the features above will be suppressed. As shown in the figure bellow, the sensors are expected to be mounted as *closed* for full water level and *opened* for low water level. 
 
 ![water sensor](https://github.com/fortalbrz/aquarioino/blob/main/water_level_sensor_001.jpg?raw=true)
@@ -147,9 +147,9 @@ The figure bellow, shows the main solution components with focus on water pumps 
 - **"sump" pump** and **"sump" water level sensor** are mounted at sump tank as show (with the "sump" water level sensors at minimum level for sump pump safety)
 - **"water reposition" pump** is mounted a external water container ("water reposition tank)
 
-The **"drain" water level sensor** and **"water reposition" pump** work together in the automation of water replenishment due evaporation losses (*optional, see [config flags](https://github.com/fortalbrz/aquarioino/blob/main/README.md#configuration-flags)*). 
+The **"drain" water level sensor** and **"water reposition" pump** work together in the automation of water replenishment due evaporation losses (*optional, see [config flags](https://github.com/fortalbrz/aquarioino#configuration-flags)*). 
 Whenever the water level drops (at water level sensor), the water reposition pump pushes more water into the fisk tank (keeping it stable).
-This feature is optional and can be disabled using the [configuration flags](https://github.com/fortalbrz/aquarioino/blob/main/README.md#configuration-flags). 
+This feature is optional and can be disabled using the [configuration flags](https://github.com/fortalbrz/aquarioino#configuration-flags). 
 In that case, "water reposition container", "water reposition pump" and the water level sensor can be dismissed. 
 Notice that the flow performance demand over the "water reposition pump" is very low, and a really cheap / low flow pump (~ 3w) is strongly recommended.  
 
@@ -157,12 +157,12 @@ As expected, the **"sump" pump** pushed water from sump back into fisk tank. The
 turn of the sump pump case water level is to low (preventing it from running without water).
 
 More over, **"sump" pump**, **"sumo" water level sensor**, **"drain" pump** and **"drain" water level sensor** 
-work together in the automation of the partial water change (PWC) routine (*optional, see [config flags](https://github.com/fortalbrz/aquarioino/blob/main/README.md#configuration-flags)*). 
+work together in the automation of the partial water change (PWC) routine (*optional, see [config flags](https://github.com/fortalbrz/aquarioino#configuration-flags)*). 
 Using a ingenious teamwork, the solution perform 2 main steps:
    - *step 1*: removes dirt water from aquarium / fisk tank into waste/sink
    - *step 2*: pushes water from the external water container (with conditioned water) into aquarium / fisk tank, until the original water level.
 
-This feature is also optional and can be disabled using the [configuration flags](https://github.com/fortalbrz/aquarioino/blob/main/README.md#configuration-flags). 
+This feature is also optional and can be disabled using the [configuration flags](https://github.com/fortalbrz/aquarioino#configuration-flags). 
 In that case, "water reposition container", "water reposition pump", "drain" pump and "drain" water level sensor can be dismissed. 
 Notice that the flow performance demand over the "drain pump" is also very low (a slower PWC is better for the fishes), and a really cheap / low flow pump (~ 3w) is also strongly recommended.  
 
