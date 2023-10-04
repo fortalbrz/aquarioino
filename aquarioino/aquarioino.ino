@@ -3,6 +3,19 @@
 //
 // AQUARIO.INO - Aquarium Automation with Home Assistant
 //
+//                                 _.'.__
+//                              _.'      .
+//        ':'.               .''   __ __  .
+//          '.:._          ./  _ ''     "-'.__
+//        .'''-: """-._    | .                "-"._
+//         '.     .    "._.'                       "
+//            '.   "-.___ .        .'          .  :o'.
+//              |   .----  .      .           .'     (
+//               '|  ----. '   ,.._                _-'
+//                .' .---  |.""  .-:;.. _____.----'
+//                |   .-""""    |      '
+//              .'  _'         .'    _'
+//             |_.-'            '-.'
 //
 //------------------------------------------------------------------------------------------------------------------
 // source code: https://github.com/fortalbrz/aquarioino
@@ -60,7 +73,7 @@
 //   - UV filter switch
 //   - heater switch
 //   - cooler fan switch
-//   - sump,  "drain" and "water reposition" pumps switches
+//   - sump, "drain" and "water reposition" pumps switches
 //   - enables/disables timers and feeding switches
 //   - start partial water change (PWC) routine button 
 //   - turn off / restart / "manual cleaning" / save configurations buttons
@@ -84,7 +97,7 @@
 // - 1 relay module with 8 channels (5 V) - https://produto.mercadolivre.com.br/MLB-1758954385-modulo-rele-rele-5v-8-canais-para-arduino-pic-raspberry-pi- _JM
 // - 2 float water level sensors and 2 x 220 olhm resistors - https://produto.mercadolivre.com.br/MLB-1540418150-sensor-de-nivel-de-agua-boia-para-arduino-esp8266-esp32-_JM
 // - 1 stepper motor with driver (optinal stepper motor feeder)
-// - 1 power source 8v 1A (any voltage between 6 V and 9 V)
+// - 1 power source 5v 1A (any voltage between 6 V and 9 V)
 // - 1 trimpot 10k
 // - 6 tactile push buttom keys and 6 x 1k resistors - https://produto.mercadolivre.com.br/MLB-1858468268-kit-10x-chave-tactil-push-button-6x6x5mm-arduino-eletrnica-_JM
 // - 6 female recessed sockets - https://produto.mercadolivre.com.br/MLB-1844503844-6-tomada-embutir-fmea-preta-3-pinos-10a-painel-aparelho-_JM
@@ -852,9 +865,13 @@ void setup() {
     //
     // MQTT initialization
     //
+    device.setName(str_device_name);
+    device.setSoftwareVersion(str_device_version);
+    device.setManufacturer(str_device_manufacturer);    
     device.enableSharedAvailability();
     device.setAvailability(false);
     device.enableLastWill();
+    
 
     mqtt.setDiscoveryPrefix(MQTT_DISCOVERY_TOPIC);
     mqtt.setDataPrefix(MQTT_STATES_TOPIC);
@@ -930,7 +947,7 @@ void setup() {
     lblPhMin.setStep(TEMP_STEP);
     lblPhMin.onCommand(onNumberChange);
 
-    lblFeederTurns.setMax(5);
+    lblFeederTurns.setMax(10);
     lblFeederTurns.setMin(1);
     lblFeederTurns.setStep(1);
     lblFeederTurns.onCommand(onNumberChange);
@@ -1108,7 +1125,7 @@ void feed() {
       digitalWrite(STEPPER_MOTOR_DIRECTION_PIN, HIGH); 
 
       for (unsigned int i = 0 ; i < _feederTurns; i++){
-        for(unsigned int j = 0 ; j < FEEDER_STEPPER_MOTOR_PULSER_PER_TURN; i++){ 
+        for(unsigned int j = 0 ; j < FEEDER_STEPPER_MOTOR_PULSER_PER_TURN; j++){ 
           // by changing this time delay between the steps we can change the rotation speed
           digitalWrite(STEPPER_MOTOR_STEP_PIN, HIGH); 
           delayMicroseconds(STEPPER_MOTOR_DELAY);
