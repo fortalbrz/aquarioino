@@ -59,6 +59,9 @@
 #define MQTT_STATES_TOPIC "betaino/state"            // MQTT topic for publish states
 #define MQTT_AVAILABILITY_TOPIC "betaino/available"  // MQTT topic for availability notification (home assistant "unavailable" state)
 #define MQTT_AVAILABILITY_TIME 60000                 // time to send MQTT availability (default: 1 min)
+#define USE_SUMP_PWM true 
+#define SUMP_PWM_ON 5000 
+#define SUMP_PWM_OFF 60000
 //
 //
 // pins definitions (Arduino pro mini)
@@ -103,6 +106,8 @@ bool _heaterOn = true;                                  // heater: default ON
 bool _sumpPumpOn = true;                                // sump pump: default ON
 bool _repoPumpOn = false;                               // repo pump: default OFF
 unsigned long _lastAvailabilityTime = millis();
+bool _sumpPumpPwmOn = true;
+unsigned long _lastSumpPwmTime = millis();
 
 //--------------------------------------------------------------------------------------------------
 //
@@ -209,6 +214,30 @@ void loop() {
 
     // turns on/off the water reposition pump (if low level detected)
     setRelay(RELAY_WATER_REPOSITION_PUMP_PIN, lowLevel);
+  #endif
+
+  #if (USE_SUMP_PWM)
+    //
+    // Sump on/off routine
+    //
+    if (_sumpPumpOn) {
+      // only changes states if sump if on
+      if (_sumpPumpPwmOn) {
+        if ((millis() - _lastSumpPwmTime) > SUMP_PWM_ON) {
+          // turn off sump pump
+          _sumpPumpPwmOn = false;
+          digitalWrite(RELAY_SUMP_PUMP_PIN, HIGH);
+          _lastSumpPwmTime = millis();
+        }
+      } else {
+        if ((millis() - _lastSumpPwmTime) > SUMP_PWM_OFF) {
+          // turn on sump pump
+          _sumpPumpPwmOn = true;
+          digitalWrite(RELAY_SUMP_PUMP_PIN, LOW);
+          _lastSumpPwmTime = millis();
+        }
+      }
+    }
   #endif
   
   delay(300);
@@ -440,6 +469,8 @@ void setRelay(const unsigned int& relayPin, const bool& state){
         #if (DEBUG_MODE == true)
           Serial.print(F(" - relay sump: "));
           Serial.println(state ? F("on") : F("off"));
+          if (USE_SUMP_PWM)
+            Serial.print(F(" [pwm mode]"));
         #endif
         break;
 
