@@ -2,7 +2,7 @@
 //
 //
 // BETA.INO - Beta Aquarium Automation with Home Assistant
-// Optimized for Arduino Pro Mini and ESP-01
+// Optimized for Arduino Nano and ESP-01
 //
 // light version of Aquario.ino (https://github.com/fortalbrz/aquarioino/)
 //
@@ -17,22 +17,112 @@
 // source code: https://github.com/fortalbrz/aquarioino/betaino/
 //
 // Materials:
-// - 1 arduino pro mini
-// - 1 relay module with 4 channels
-// - 1 water level sensor
-// - 1 power source 5v
-// - 1 stepper motor with driver
-// - 2 tactile push buttom keys and 2 x resistor 1k olhms
-// - 1 led and resistor 10k olhms (indicates "power on")
+// - 1 arduino Nano
+// - 1 relay module with 4 channels (optional, see USE_RELAYS)
+// - 1 water level sensor and 1 resistor 10k olhms (optional, see USE_WATER_LEVEL_SENSORS)
+// - 1 Wi-fi module ESP 8266-01 (optional, see USE_HOME_ASSISTANT)
+// - 1 bidirectional digital level shifter - I2C 5v/3.3v OR 2 voltage divider with 10K and 20K olhms resistors (optional, see USE_HOME_ASSISTANT)
+// - 1 stepper motor with driver ULN2023 (optional, see USE_STEPPER_MOTOR)
+// - 1 power source 5v (1 A)
+// - 2 tactile push buttom keys and 2 x resistor 10k olhms (optional, see USR_PUSH_BUTTONS)
+// - 1 led and resistor 10k olhms (optional, indicates "power on")
+// - 1 electrolytic capacitor 100 uF (optional)
 // - plastic hoses (connect bumps)
 // - flexible cab (22 agw)
 // - 1 large plastic water container (reused, optional as "water reposition container")
 //
+// Circuit Wiring Instruction:
+//  - Arduino Nano "Vin" --> +5 V power source (VCC)
+//  - Arduino Nano "Gnd" --> -5 V power source (GND)
+//  - Arduino Nano "D2" --> resistor 10k olhms "A" terminal 1 (optional, see USE_PUSH_BUTTONS)
+//  - resistor 10k olhms "A" terminal 2 --> +5 V power source (VCC) (optional, see USE_PUSH_BUTTONS)
+//  - Arduino Nano "D3" --> resistor 10k olhms "B" terminal 1 (optional, see USE_PUSH_BUTTONS)
+//  - resistor 10k olhms "B" terminal 2 --> +5 V power source (VCC) (optional, see USE_PUSH_BUTTONS)
+//  - Arduino Nano "D2" --> tactile push buttom "FEED" terminal 1 (NC) (optional, see USE_PUSH_BUTTONS)
+//  - tactile push buttom "FEED" terminal 2 (NC) --> -5 V power source (GND) (optional, see USE_PUSH_BUTTONS)
+//  - Arduino Nano "D3" --> tactile push buttom "LIGHT" terminal 1 (NC) (optional, see USE_PUSH_BUTTONS)
+//  - tactile push buttom "LIGHT" terminal 2 (NC) --> -5 V power source (GND) (optional, see USE_PUSH_BUTTONS)
+//  - Arduino Nano "D4" --> digital level shifter "HV1" (optional, see USE_HOME_ASSISTANT)
+//  - Arduino Nano "D4" --> digital level shifter "HV2" (optional, see USE_HOME_ASSISTANT)
+//  - Arduino Nano "+5V" --> digital level shifter "HV" (optional, see USE_HOME_ASSISTANT)
+//  - Arduino Nano "+3.3V" --> digital level shifter "LV" (optional, see USE_HOME_ASSISTANT)
+//  - Arduino Nano "GND" --> digital level shifter "GND" (optional, see USE_HOME_ASSISTANT)
+//  - digital level shifter "LV1" -> ESP-01 RX (optional, see USE_HOME_ASSISTANT)
+//  - digital level shifter "LV2" -> ESP-01 TX (optional, see USE_HOME_ASSISTANT)
+//  - Arduino Nano "+3.3V" --> ESP-01 VCC (optional, see USE_HOME_ASSISTANT)
+//  - Arduino Nano "GND" --> ESP-01 GND (optional, see USE_HOME_ASSISTANT)
+//  - Arduino Nano "D6" --> water level sensor terminal 1 (optional, see USE_WATER_LEVEL_SENSORS)
+//  - water level sensor terminal 2 --> +5 V power source (VCC) (optional, see USE_WATER_LEVEL_SENSORS)
+//  - Arduino Nano "D6" --> resistor 10k olhms "C" terminal 1 (optional, see USE_WATER_LEVEL_SENSORS)
+//  - resistor 10k olhms "C" terminal 2 --> Arduino Nano "GND" (optional, see USE_WATER_LEVEL_SENSORS)
+//  - Relay 4 ch "VCC" --> +5 V power source (VCC) (optional, see USE_RELAYS)
+//  - Relay 4 ch "GND" --> -5 V power source (GND) (optional, see USE_RELAYS)
+//  - Arduino Nano "D7" --> Relay 4 ch "IN 1" (optional, see USE_RELAYS)
+//  - Arduino Nano "D8" --> Relay 4 ch "IN 2" (optional, see USE_RELAYS)
+//  - Arduino Nano "D9" --> Relay 4 ch "IN 3" (optional, see USE_RELAYS)
+//  - Arduino Nano "D10" --> Relay 4 ch "IN 4" (optional, see USE_RELAYS)
+//  - stepper motor driver ULN2023 "+5V" --> +5 V power source (VCC) (optional, see USE_STEPPER_MOTOR)
+//  - stepper motor driver ULN2023 "-5V" --> -5 V power source (GND) (optional, see USE_STEPPER_MOTOR)
+//  - Arduino Nano "D11" --> stepper motor driver ULN2023 "IN 1" (optional, see USE_STEPPER_MOTOR)
+//  - Arduino Nano "D12" --> stepper motor driver ULN2023 "IN 2" (optional, see USE_STEPPER_MOTOR)
+//  - Arduino Nano "D13" --> stepper motor driver ULN2023 "IN 3" (optional, see USE_STEPPER_MOTOR)
+//  - Arduino Nano "A0" (pin 14) --> stepper motor driver ULN2023 "IN 4" (optional, see USE_STEPPER_MOTOR)
+//  - Led terminal 1 (positive) --> +5 V power source (VCC) (optional, "power on led")
+//  - Led terminal 2 (negative/bevel) --> resistor 10k olhms "D" terminal 1 (optional, "power on led")
+//  - resistor 10k olhms "D" terminal 2 --> -5 V power source (GND) (optional, "power on led")
+//  - capacitor 100uF (positive) --> +5 V power source (VCC) (optional)
+//  - capacitor 100uF (negative/"minus sign") --> resistor 10k olhms "D" terminal 2 (optional)
+//
+// Flashing the code:
+//   - the Arduino Nano may use the USB/serial IC CH340G, so it's necessary to install the Windows driver: 
+//       - CH340G driver: http://bit.ly/44WdzVF (windows 11 compatible)
+//       - driver installation instructions (pt-BR): http://bit.ly/3ZqIqc0
+//   - download Arduino IDE (ver 2.0): https://www.arduino.cc/en/software
+//   - install WifiEsp library:
+//       - On arduino IDE select: "File" -> "Preferences" -> "Additional boards manager URL":
+//          - add the URL: http://arduino.esp8266.com/stable/package_esp8266com_index.json
+//       - On arduino IDE select: "Tools" -> "Manage Libraries":
+//          - search and install: "WifiEsp" (by bportaluri)
+//   - uses a micro USB cable to connect to the Arduino
+//   - select the "Arduino Nano" board in the arduino IDE: "Tools" -> "Board".
+//   - select "Sketch" -> "Upload"
+//
+// Wiring Testing:
+//  sets the macro "TESTING_MODE" as true in order to check buttons, relays and water sensor connections (testing only)
+//
+// Serial Monitor:
+//  sets the macro "DEBUG_MODE" as true in order to debug on serial monitor (testing only)
+//
+// Setup:
+//    - partial assembly:
+//        USE_HOME_ASSISTANT                     enables/disables home assistant integration (disable it to not use the ESP-01 module)
+//        USE_WATER_LEVEL_SENSORS                enables/disables water level sensors (disable it to not use the water level sensors)
+//        USE_STEPPER_MOTOR                      enables/disables stepper motor feeder (disable it to not use the stepper motor)
+//        USE_PUSH_BUTTONS                       enables/disables push buttons (disable it to not use the push buttons)
+//        USE_RELAYS                             enables/disables relays (disable it to not use the relays module)
+//    - configurations:
+//        ENABLE_LIGHTS                          enables/disables lights relay
+//        ENABLE_HEATER                          enables/disables heater relay
+//        ENABLE_FEEDING                         enables/disables feeding routine
+//        ENABLE_WATER_REPOSITION                true for uses "feeding" relay as feeder, false for uses it as regular extra relay
+//        STEPPER_MOTOR_STEPS_PER_REVOLUTION     number of pulses per turn on stepper motor feeder (usually 32 or 64)
+//        STEPPER_MOTOR_DELAY                    time delay (in microseconds) between the motor steps (use it for change the rotation speed)
+//        FEEDER_TURNS                           default number of feeder turns
+//    - network:
+//        WIFI_SSID                              Wi-fi SSID
+//        WIFI_PASSWORD                          Wi-fi password
+//        MQTT_BROKER_ADDRESS                    MQTT broker server ip
+//        MQTT_BROKER_PORT                       MQTT broker port
+//        MQTT_USERNAME                          MQTT username, can be omitted if not needed
+//        MQTT_PASSWORD                          MQTT password, can be omitted if not needed
+//
 //------------------------------------------------------------------------------------------------------------------
 //
 // 2023 - Jorge Albuquerque (jorgealbuquerque@gmail.com)
+// https://jorgealbuquerque.com
 //
-#define DEBUG_MODE true                              // enable/disables serial debugging messages
+#define DEBUG_MODE true                              // enables/disables serial debugging messages
+#define TESTING_MODE true                            // enables/disables testing mode
 //
 // Configuration flags (enables or disables features in order to "skip" unwanted hardware)
 //
@@ -45,7 +135,7 @@
 #define ENABLE_HEATER true                           // enables/disables heater relays
 #define ENABLE_FEEDING true                          // enables/disables feeding routine
 #define ENABLE_WATER_REPOSITION true                 // true for uses "feeding" relay as feeder, false for uses it as regular extra relay
-#define STEPPER_MOTOR_STEPS_PER_REVOLUTION 64        // number of pulses per turn on stepper motor feeder
+#define STEPPER_MOTOR_STEPS_PER_REVOLUTION 64        // number of pulses per turn on stepper motor feeder (usually 32 or 64)
 #define STEPPER_MOTOR_DELAY 700                      // time delay (in microseconds) between the motor steps (use it for change the rotation speed)
 #define FEEDER_TURNS 1                               // default number of feeder turns (comple cycles)
 #define WIFI_SSID "ssid"                             // Wi-fi SSID
@@ -64,7 +154,7 @@
 #define SUMP_PWM_OFF 60000
 //
 //
-// pins definitions (Arduino pro mini)
+// pins definitions (Arduino Nano)
 // - digital: 2 to 13 (interruptions digital pins 2 and 3)
 // - analog: A0 to A7
 #define PUSH_BUTTON_FEEDING_PIN 2                  // D2: feeding push button (interption 0)
@@ -80,8 +170,8 @@
 #define STEPPER_MOTOR_IN2_PIN 12                   // D12: stepper motor ULN2003 - IN2
 #define STEPPER_MOTOR_IN3_PIN 13                   // D13: stepper motor ULN2003 - IN3
 #define STEPPER_MOTOR_IN4_PIN 14                   // A0: stepper motor ULN2003 - IN4
-#define STEPPER_MOTOR_STEP_PIN 11                  // D11: stepper motor 
-#define STEPPER_MOTOR_DIRECTION_PIN  12            // D12: stepper motor
+
+#define SERIAL_ON (DEBUG_MODE || TESTING_MODE)
 
 #if (USE_STEPPER_MOTOR == true)
   //
@@ -118,6 +208,7 @@ bool _ligthOn = false;                                  // lights: default OFF
 bool _heaterOn = true;                                  // heater: default ON
 bool _sumpPumpOn = true;                                // sump pump: default ON
 bool _repoPumpOn = false;                               // repo pump: default OFF
+bool _testOk = false;
 unsigned long _lastAvailabilityTime = millis();
 bool _sumpPumpPwmOn = true;
 unsigned long _lastSumpPwmTime = millis();
@@ -134,7 +225,7 @@ void setup() {
   //
   pinMode(LED_BUILTIN, OUTPUT); // blinking led 
 
-  #if (DEBUG_MODE == true)
+  #if (SERIAL_ON == true)
     // serial output only in debug mode!
     Serial.begin(9600);    
     Serial.println(F("starting..."));
@@ -163,14 +254,6 @@ void setup() {
     pinMode(WATER_LOW_LEVEL_SENSOR_PIN, INPUT);
   #endif
 
-  #if (USE_STEPPER_MOTOR == true) 
-    //
-    // initializes stepper motor
-    //
-    pinMode(STEPPER_MOTOR_STEP_PIN, OUTPUT); 
-    pinMode(STEPPER_MOTOR_DIRECTION_PIN, OUTPUT);
-  #endif
-
   
   #if (USE_PUSH_BUTTONS == true)
     //
@@ -182,7 +265,7 @@ void setup() {
     attachInterrupt(digitalPinToInterrupt(PUSH_BUTTON_LIGHT_PIN), onLightPushButton, FALLING);
   #endif
   
-  #if (USE_HOME_ASSISTANT == true)
+  #if (USE_HOME_ASSISTANT == true && TESTING_MODE == false)
     //
     // MQTT initialization
     //
@@ -199,6 +282,11 @@ void loop() {
   //
   digitalWrite(LED_BUILTIN, (_blink ? HIGH: LOW)); // blinking led
   _blink = !_blink;
+
+  #if (TESTING_MODE == true)
+    if (!_testOk)
+      test();
+  #endif
 
   #if (USE_HOME_ASSISTANT == true)
     //
@@ -269,14 +357,24 @@ void loop() {
     //
     // feeding button handler: feed!
     //
-    feed();
+    #if (TESTING_MODE == true)
+      Serial.println('Button feed pressed');
+      blink();
+    #else    
+      feed();
+    #endif
   }
 
   void onLightPushButton(){
     //
     // lightening button handler: invertd light state
     //
-    setRelay(RELAY_LIGHTS_PIN, !_ligthOn);
+    #if (TESTING_MODE == true)
+      Serial.println('Button light pressed');
+      blink();
+    #else    
+      setRelay(RELAY_LIGHTS_PIN, !_ligthOn);
+    #endif
   }
 
 #endif
@@ -296,7 +394,7 @@ void loop() {
     WiFi.init(&SerialEsp01);  
     delay(10);
     
-    #if (DEBUG_MODE == true)
+    #if (SERIAL_ON == true)
       Serial.println();
       Serial.print(F("connecting to wifi: "));
       Serial.println(WIFI_SSID);
@@ -307,12 +405,12 @@ void loop() {
 
     while (WiFi.status() != WL_CONNECTED) {
       delay(500);
-      #if (DEBUG_MODE == true)
+      #if (SERIAL_ON == true)
         Serial.print(F("."));
       #endif
     }
 
-    #if (DEBUG_MODE == true)
+    #if (SERIAL_ON == true)
       Serial.print(F("wifi connected: "));
       Serial.println(WiFi.localIP());
     #endif
@@ -323,20 +421,20 @@ void loop() {
     // reconnect to MQTT broker
     //
     while (!client.connected()) {
-      #if (DEBUG_MODE == true)
+      #if (SERIAL_ON == true)
         Serial.println(F("MQTT reconnection..."));
       #endif
     
       // attempts to connect
       if (client.connect(MQTT_DEVICE_ID, MQTT_USERNAME, MQTT_PASSWORD)) {
-        #if (DEBUG_MODE == true)
+        #if (SERIAL_ON == true)
           Serial.println(F("connected"));
         #endif
 
         // subscribes to command topic
         client.subscribe(MQTT_COMMAND_TOPIC);
       } else {
-        #if (DEBUG_MODE == true)
+        #if (SERIAL_ON == true)
           Serial.print(F("failed: rc="));
           Serial.print(client.state());
           Serial.println(F(". trying again in 5 seconds."));
@@ -351,7 +449,7 @@ void loop() {
     //
     // on MQTT message received callback
     //
-    #if (DEBUG_MODE == true)
+    #if (SERIAL_ON == true)
       Serial.print(F(" - mqtt command: ["));
       for (unsigned int i = 0; i < length; i++) 
         Serial.print((char)payload[i]);
@@ -402,7 +500,7 @@ void updateState(){
   char message[n];
   json.toCharArray(message, n);
 
-  #if (DEBUG_MODE == true)
+  #if (SERIAL_ON == true)
     Serial.print(F("mqtt update: "));
     Serial.println(message);
   #endif
@@ -420,32 +518,26 @@ void feed() {
   //
   #if (USE_STEPPER_MOTOR == true && ENABLE_FEEDING == true)  
 
-    #if (DEBUG_MODE == true)
+    #if (SERIAL_ON == true)
       Serial.println(F("stating feeding"));
     #endif
-
-    //digitalWrite(STEPPER_MOTOR_DIRECTION_PIN, HIGH);
-    //delay(30);
-
+    
     for (unsigned int i = 0 ; i < FEEDER_TURNS; i++) {
-      #if (DEBUG_MODE == true)
-        Serial.println(F("feeding turn: "));
+      #if (SERIAL_ON == true)
+        Serial.print(F("feeding turn: "));
         Serial.println(i);
       #endif
       
       for(unsigned int j = 0 ; j < STEPPER_MOTOR_STEPS_PER_REVOLUTION; j++) { 
-        // by changing this time delay between the steps we can change the rotation speed
-        // digitalWrite(STEPPER_MOTOR_STEP_PIN, HIGH); 
-        // delayMicroseconds(STEPPER_MOTOR_DELAY);
-        // digitalWrite(STEPPER_MOTOR_STEP_PIN, LOW); 
-        // delayMicroseconds(STEPPER_MOTOR_DELAY);
         FeederStepper.step(1); 
+        // by changing this time delay between the steps we can change the rotation speed
         delayMicroseconds(STEPPER_MOTOR_DELAY);
       }
     }
 
-    #if (DEBUG_MODE == true)
+    #if (SERIAL_ON == true)
       Serial.println(F("feeding finished"));
+      Serial.println();
     #endif
 
   #endif
@@ -465,7 +557,7 @@ void setRelay(const unsigned int& relayPin, const bool& state){
         if (!ENABLE_LIGHTS || _ligthOn == state)
           return;
         _ligthOn = state;
-        #if (DEBUG_MODE == true)
+        #if (SERIAL_ON == true)
           Serial.print(F(" - relay light: "));
           Serial.println(state ? F("on") : F("off"));
         #endif
@@ -476,7 +568,7 @@ void setRelay(const unsigned int& relayPin, const bool& state){
         if (_heaterOn == state)
           return;
         _heaterOn = state;        
-        #if (DEBUG_MODE == true)
+        #if (SERIAL_ON == true)
           Serial.print(F(" - relay heater: "));
           Serial.println(state ? F("on") : F("off"));
         #endif
@@ -486,7 +578,7 @@ void setRelay(const unsigned int& relayPin, const bool& state){
         if (_sumpPumpOn == state)
           return;
         _sumpPumpOn = state;
-        #if (DEBUG_MODE == true)
+        #if (SERIAL_ON == true)
           Serial.print(F(" - relay sump: "));
           Serial.println(state ? F("on") : F("off"));
           if (USE_SUMP_PWM)
@@ -495,7 +587,7 @@ void setRelay(const unsigned int& relayPin, const bool& state){
         break;
 
       case RELAY_WATER_REPOSITION_PUMP_PIN:
-        #if (DEBUG_MODE == true)
+        #if (SERIAL_ON == true)
           Serial.print(F(" - relay repo: "));
           Serial.println(state ? F("on") : F("off"));
         #endif
@@ -512,3 +604,91 @@ void setRelay(const unsigned int& relayPin, const bool& state){
 
   #endif
 }
+
+
+#if (TESTING_MODE == true)
+  
+  void test() {
+    //
+    // Testing routine
+    //            
+    while (true) {
+      Serial.println(F("TESTING MODE"));
+      Serial.println(F("1) Water Level Sensor"));
+      Serial.println(F("2) Relay 1 - Light"));
+      Serial.println(F("3) Relay 2 - Heater"));
+      Serial.println(F("4) Relay 3 - Sump Pump"));
+      Serial.println(F("5) Relay 4 - Water Repo Pump"));
+      Serial.println(F("6) Feeder"));
+      Serial.println(F("7) Exit"));
+      Serial.println(F("Select one option [1-7]:"));
+      Serial.println();
+      while(Serial.available() < 2)  {
+        delay(300);
+      }
+
+      // can be -1 if read error      
+      int input = Serial.parseInt();
+
+      Serial.print(F("option: "));
+      Serial.println(input);
+      
+      switch(input) { 
+        case 1:
+          // water level sensor testing
+          while(Serial.available() == 0)  {
+            if (digitalRead(WATER_LOW_LEVEL_SENSOR_PIN))
+              Serial.println(F("Water Level: ok"));
+            else
+              Serial.println(F("Water Level: LOW"));
+            Serial.println(F("press any key to exit..."));
+            delay(1000);
+          }   
+          Serial.read();
+          blink();
+          break;
+        case 2:
+          // relay 1 testing
+          setRelay(RELAY_LIGHTS_PIN, !_ligthOn);
+          blink();
+          break;
+        case 3:
+          // relay 2 testing
+          setRelay(RELAY_HEATER_PIN, !_heaterOn);
+          blink();
+          break;
+        case 4:
+          // relay 3 testing
+          setRelay(RELAY_SUMP_PUMP_PIN, !_sumpPumpOn);
+          blink();
+          break;
+        case 5:
+          // relay 4 testing
+          setRelay(RELAY_WATER_REPOSITION_PUMP_PIN, !_repoPumpOn);
+          break;
+        case 6:
+          // feeding testing
+          feed();
+          blink();
+          break;        
+        case 7:
+          // Exit
+          _testOk = true;
+          return;          
+        default:          
+          Serial.println(F("Invalid option: [1-7]."));
+          break; 
+      }
+    }
+  }
+
+  void blink() {
+    // blinking led
+    digitalWrite(LED_BUILTIN, LOW); 
+    delay(30);
+    digitalWrite(LED_BUILTIN, HIGH); 
+    delay(500);
+    digitalWrite(LED_BUILTIN, LOW); 
+    delay(30);  
+  }
+#endif

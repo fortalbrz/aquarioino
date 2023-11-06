@@ -115,10 +115,10 @@
 // - see https://www.circuito.io/static/reply/index.html?solutionId=65010bbd91d445002e8974a5&solutionPath=storage.circuito.io
 //  
 // Flashing the code
-//   - the Arduino Mega Pro Mini uses the USB/serial IC CH340G, so it's necessary to install the Windows driver: 
-//       - CH340G driver: http:|bit.ly/44WdzVF (windows 11 compatible)
-//       - driver installation instructions (pt-BR): http:|bit.ly/3ZqIqc0
-//   - Download Arduino IDE: https://www.arduino.cc/en/software
+//   - the Arduino Mega Pro Mini may use the USB/serial IC CH340G, so it's necessary to install the Windows driver: 
+//       - CH340G driver: http://bit.ly/44WdzVF (windows 11 compatible)
+//       - driver installation instructions (pt-BR): http://bit.ly/3ZqIqc0
+//   - Download Arduino IDE (ver 2.0): https://www.arduino.cc/en/software
 //   - uses a micro USB cable to connect to the Arduino and select the "Arduino Mega or Mega 2560" board in the IDE ("Tools" -> "Board").
 //   - in the library manager, select and install:
 //       - "OneWire" by Jim Studt, Tom Pollard, Robin James, etc
