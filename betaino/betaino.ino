@@ -45,7 +45,7 @@
 #define ENABLE_HEATER true                           // enables/disables heater relays
 #define ENABLE_FEEDING true                          // enables/disables feeding routine
 #define ENABLE_WATER_REPOSITION true                 // true for uses "feeding" relay as feeder, false for uses it as regular extra relay
-#define STEPPER_MOTOR_PULSER_PER_TURN 200            // number of pulses per turn on stepper motor feeder
+#define STEPPER_MOTOR_STEPS_PER_REVOLUTION 64        // number of pulses per turn on stepper motor feeder
 #define STEPPER_MOTOR_DELAY 700                      // time delay (in microseconds) between the motor steps (use it for change the rotation speed)
 #define FEEDER_TURNS 1                               // default number of feeder turns (comple cycles)
 #define WIFI_SSID "ssid"                             // Wi-fi SSID
@@ -76,9 +76,22 @@
 #define RELAY_HEATER_PIN 8                         // D8: relay sump pump (normally open, common on 110vac)
 #define RELAY_SUMP_PUMP_PIN 9                      // D9: relay sump pump (normally open, common on 110vac)
 #define RELAY_WATER_REPOSITION_PUMP_PIN 10         // D10: relay water reposition pump (normally open, common on 110vac)
+#define STEPPER_MOTOR_IN1_PIN 11                   // D11: stepper motor ULN2003 - IN1
+#define STEPPER_MOTOR_IN2_PIN 12                   // D12: stepper motor ULN2003 - IN2
+#define STEPPER_MOTOR_IN3_PIN 13                   // D13: stepper motor ULN2003 - IN3
+#define STEPPER_MOTOR_IN4_PIN 14                   // A0: stepper motor ULN2003 - IN4
 #define STEPPER_MOTOR_STEP_PIN 11                  // D11: stepper motor 
 #define STEPPER_MOTOR_DIRECTION_PIN  12            // D12: stepper motor
 
+#if (USE_STEPPER_MOTOR == true)
+  //
+  // Wifi (ESP-01) libraries
+  //
+  #include <Stepper.h>
+  Stepper FeederStepper(STEPPER_MOTOR_STEPS_PER_REVOLUTION, 
+    STEPPER_MOTOR_IN1_PIN, STEPPER_MOTOR_IN2_PIN, 
+    STEPPER_MOTOR_IN3_PIN, STEPPER_MOTOR_IN4_PIN);
+#endif
 
 #if (USE_HOME_ASSISTANT == true)
   //
@@ -411,16 +424,23 @@ void feed() {
       Serial.println(F("stating feeding"));
     #endif
 
-    digitalWrite(STEPPER_MOTOR_DIRECTION_PIN, HIGH);
-    delay(30);
+    //digitalWrite(STEPPER_MOTOR_DIRECTION_PIN, HIGH);
+    //delay(30);
 
     for (unsigned int i = 0 ; i < FEEDER_TURNS; i++) {
-      for(unsigned int j = 0 ; j < STEPPER_MOTOR_PULSER_PER_TURN; j++) { 
+      #if (DEBUG_MODE == true)
+        Serial.println(F("feeding turn: "));
+        Serial.println(i);
+      #endif
+      
+      for(unsigned int j = 0 ; j < STEPPER_MOTOR_STEPS_PER_REVOLUTION; j++) { 
         // by changing this time delay between the steps we can change the rotation speed
-        digitalWrite(STEPPER_MOTOR_STEP_PIN, HIGH); 
+        // digitalWrite(STEPPER_MOTOR_STEP_PIN, HIGH); 
+        // delayMicroseconds(STEPPER_MOTOR_DELAY);
+        // digitalWrite(STEPPER_MOTOR_STEP_PIN, LOW); 
+        // delayMicroseconds(STEPPER_MOTOR_DELAY);
+        FeederStepper.step(1); 
         delayMicroseconds(STEPPER_MOTOR_DELAY);
-        digitalWrite(STEPPER_MOTOR_STEP_PIN, LOW); 
-        delayMicroseconds(STEPPER_MOTOR_DELAY); 
       }
     }
 
