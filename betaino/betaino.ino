@@ -121,37 +121,38 @@
 // 2023 - Jorge Albuquerque (jorgealbuquerque@gmail.com)
 // https://jorgealbuquerque.com
 //
-#define DEBUG_MODE true                             // enables/disables serial debugging messages
-#define TESTING_MODE false                          // enables/disables testing mode
+#define DEBUG_MODE false                             // enables/disables serial debugging messages
+#define TESTING_MODE false                           // enables/disables testing mode
 //
 // Configuration flags (enables or disables features in order to "skip" unwanted hardware)
 //
-#define USE_HOME_ASSISTANT true                      // enables/disables home assistant integration (disable it to not use the ESP-01 module)
+#define USE_HOME_ASSISTANT false                     // enables/disables home assistant integration (disable it to not use the ESP-01 module)
 #define USE_WATER_LEVEL_SENSORS true                 // enables/disables water level sensors (disable it to not use the water level sensors)
 #define USE_STEPPER_MOTOR true                       // enables/disables stepper motor (disable it to not use the stepper motor)
 #define USE_PUSH_BUTTONS true                        // enables/disables push buttons (disable it to not use the push buttons)
 #define USE_RELAYS true                              // enables/disables relays (disable it to not use the relays module)
-#define ENABLE_LIGHTS true                           // enables/disables lights relays
-#define ENABLE_HEATER true                           // enables/disables heater relays
-#define ENABLE_FEEDING true                          // enables/disables feeding routine
-#define ENABLE_WATER_REPOSITION true                 // true for uses "feeding" relay as feeder, false for uses it as regular extra relay
-#define STEPPER_MOTOR_STEPS_PER_REVOLUTION 200       // number of pulses per turn on stepper motor feeder (usually 32 or 64)
-#define STEPPER_MOTOR_SPEED 60                       // the rotation speed
-#define FEEDER_TURNS 1                               // default number of feeder turns (comple cycles)
+#define ENABLE_LIGHTS true                           // enables/disables lights relays (relay 01)
+#define ENABLE_HEATER true                           // enables/disables heater relays (relay 02)
+#define ENABLE_FEEDING false                         // enables/disables feeding routine (stepper motor)
+#define ENABLE_WATER_REPOSITION true                 // true for uses "feeding" relay as feeder, false for uses it as regular extra relay (relay 04)
+#define STEPPER_MOTOR_STEPS_PER_REVOLUTION 64        // number of pulses per turn on stepper motor feeder (usually 32 or 64)
+#define STEPPER_MOTOR_SPEED 40                       // the rotation speed
+#define FEEDER_TURNS 1                               // default number of feeder turns (complete cycles)
 #define WIFI_SSID "wifi-ssid"                        // Wi-fi SSID
 #define WIFI_PASSWORD "wifi-password"                // Wi-fi password
 #define MQTT_BROKER_ADDRESS "192.168.68.93"          // MQTT broker server ip
 #define MQTT_BROKER_PORT 1883                        // MQTT broker port
 #define MQTT_USERNAME "mqtt-user"                    // can be omitted if not needed
 #define MQTT_PASSWORD "mqtt-password"                // can be omitted if not needed
-#define MQTT_DEVICE_ID "betaino_12fmo43iowerwe"      // MQTT device id (unique)
-#define MQTT_COMMAND_TOPIC "betaino/cmd"             // MQTT topic for input commands
-#define MQTT_STATES_TOPIC "betaino/state"            // MQTT topic for publish states
+#define MQTT_DEVICE_ID "betaino_12fmo43iowerwe"      // MQTT device id (unique - change for more than one)
+#define MQTT_COMMAND_TOPIC "betaino/cmd"             // MQTT topic for input commands (home assitant -> betaino)
+#define MQTT_STATES_TOPIC "betaino/state"            // MQTT topic for publish states (betaino -> home assistant)
 #define MQTT_AVAILABILITY_TOPIC "betaino/available"  // MQTT topic for availability notification (home assistant "unavailable" state)
-#define MQTT_AVAILABILITY_TIME 60000                 // time to send MQTT availability (default: 1 min)
-#define USE_SUMP_ON_OFF false 
-#define SUMP_TIME_ON 5000 
-#define SUMP_TIME_OFF 20000
+#define MQTT_AVAILABILITY_TIME 60000                 // time to send MQTT availability in miliseconds (default: 1 min)
+#define USE_SUMP_ON_OFF true                         // true on the custom routine for turn on/off the sump pump (very particular case - see video)
+#define SUMP_TIME_ON 9000                            // sump turn on time (only if "USE_SUMP_ON_OFF" = true)
+#define SUMP_TIME_OFF 9000                           // sump turn off time (only if "USE_SUMP_ON_OFF" = true)
+#define BUTTON_SINGLE_PUSH_TIME 300                  // time to avoid double push button press (better usability)
 //
 //
 // pins definitions (Arduino Nano)
@@ -173,6 +174,7 @@
 
 #define SERIAL_ON (DEBUG_MODE || TESTING_MODE)
 
+#include <util/atomic.h>
 #if (USE_STEPPER_MOTOR == true)
   //
   // Wifi (ESP-01) libraries
@@ -214,6 +216,7 @@ bool _sumpPumpPwmOn = true;
 bool _testOk = false;
 unsigned long _lastAvailabilityTime = millis();
 unsigned long _lastSumpPwmTime = millis();
+unsigned long _lastButtonPress = millis();
 
 //--------------------------------------------------------------------------------------------------
 //
@@ -295,35 +298,33 @@ void loop() {
     //
     // keeps MQTT connection alive
     //
-    cli();
-    
-    if (!client.connected()) 
-      reconnect();
-    
-    client.loop();
+    ATOMIC_BLOCK( ATOMIC_RESTORESTATE )
+    {
+      if (!client.connected()) 
+        reconnect();
+      
+      client.loop();
 
-    if ((millis() - _lastAvailabilityTime) > MQTT_AVAILABILITY_TIME) {
-      // sends MQTT "availability" message
-      client.publish(MQTT_AVAILABILITY_TOPIC, "online");
-      _lastAvailabilityTime = millis();
-    }
-
-    sei();
+      if ((millis() - _lastAvailabilityTime) > MQTT_AVAILABILITY_TIME) {
+        // sends MQTT "availability" message
+        client.publish(MQTT_AVAILABILITY_TOPIC, "online");
+        _lastAvailabilityTime = millis();
+      }
+    }    
   #endif
 
   #if (USE_WATER_LEVEL_SENSORS == true && USE_RELAYS == true)
     //
     // water sensor level watchdog
     //
-    cli();
-    
-    // level sensor open (false) => low water level!     
-    bool lowLevel = !digitalRead(WATER_LOW_LEVEL_SENSOR_PIN);
+    ATOMIC_BLOCK( ATOMIC_RESTORESTATE )
+    {        
+      // level sensor open (false) => low water level!     
+      bool lowLevel = !digitalRead(WATER_LOW_LEVEL_SENSOR_PIN);
 
-    // turns on/off the water reposition pump (if low level detected)
-    setRelay(RELAY_WATER_REPOSITION_PUMP_PIN, lowLevel);
-    
-    sei();
+      // turns on/off the water reposition pump (if low level detected)
+      setRelay(RELAY_WATER_REPOSITION_PUMP_PIN, lowLevel);    
+    }
   #endif
 
   #if (USE_SUMP_ON_OFF)
@@ -331,32 +332,32 @@ void loop() {
     // Sump on/off routine
     //
     if (_sumpPumpOn) {
-      cli();
-      // only changes states if sump if on
-      if (_repoPumpOn){
-        _sumpPumpPwmOn = false;
-        digitalWrite(RELAY_SUMP_PUMP_PIN, HIGH);
-      }
-      else if (_sumpPumpPwmOn) {
-        if ((millis() - _lastSumpPwmTime) > SUMP_TIME_ON) {
-          // turn off sump pump
+      ATOMIC_BLOCK( ATOMIC_RESTORESTATE )
+      {
+        // only changes states if sump if on
+        if (_repoPumpOn){
           _sumpPumpPwmOn = false;
           digitalWrite(RELAY_SUMP_PUMP_PIN, HIGH);
-          _lastSumpPwmTime = millis();
         }
-      } else {
-        if ((millis() - _lastSumpPwmTime) > SUMP_TIME_OFF) {
-          // turn on sump pump
-          _sumpPumpPwmOn = true;
-          digitalWrite(RELAY_SUMP_PUMP_PIN, LOW);
-          _lastSumpPwmTime = millis();
+        else if (_sumpPumpPwmOn) {
+          if ((millis() - _lastSumpPwmTime) > SUMP_TIME_ON) {
+            // turn off sump pump
+            _sumpPumpPwmOn = false;
+            digitalWrite(RELAY_SUMP_PUMP_PIN, HIGH);
+            _lastSumpPwmTime = millis();          
+          }
+        } else {
+          if ((millis() - _lastSumpPwmTime) > SUMP_TIME_OFF) {
+            // turn on sump pump
+            _sumpPumpPwmOn = true;
+            digitalWrite(RELAY_SUMP_PUMP_PIN, LOW);
+            _lastSumpPwmTime = millis();
+          }
         }
       }
-      sei();
     }
   #endif
 
-  sei();
   delay(400);
 }
 
@@ -373,22 +374,28 @@ void loop() {
     //
     // feeding button handler: feed!
     //
-    #if (TESTING_MODE == true)
-      Serial.println(F("Button feed pressed"));
-    #endif
+    if ((millis() - _lastButtonPress) > BUTTON_SINGLE_PUSH_TIME) {
+      #if (TESTING_MODE == true)
+        Serial.println(F("Button feed pressed"));
+      #endif
+      _lastButtonPress = millis();
 
-    feed();
+      feed();      
+    }
   }
 
   void onLightPushButton(){
     //
     // lightening button handler: invertd light state
     //
-    #if (TESTING_MODE == true)
-      Serial.println(F("Button light pressed"));
-    #endif    
-    
-    setRelay(RELAY_LIGHTS_PIN, !_ligthOn);
+    if ((millis() - _lastButtonPress) > BUTTON_SINGLE_PUSH_TIME) {
+      #if (TESTING_MODE == true)
+        Serial.println(F("Button light pressed"));
+      #endif    
+      _lastButtonPress = millis();
+      
+      setRelay(RELAY_LIGHTS_PIN, !_ligthOn);      
+    }
   }
 
 #endif
@@ -530,17 +537,27 @@ void feed() {
   //
   // Feeding procedure
   //
-  #if (USE_STEPPER_MOTOR == true && ENABLE_FEEDING == true)  
-    sei();
+  sei();
 
+  #if (USE_STEPPER_MOTOR == true && ENABLE_FEEDING == true)  
     #if (SERIAL_ON == true)
       Serial.println(F("stating feeding"));
+      delay(300);
+    #endif
+    
+    #if (USE_SUMP_ON_OFF == true)
+      // if using the sump pump on/off routine, turn off pumps...
+      digitalWrite(RELAY_SUMP_PUMP_PIN, HIGH);
+      delay(100);
+      digitalWrite(RELAY_WATER_REPOSITION_PUMP_PIN, HIGH);
+      delay(100);
     #endif
     
     for (unsigned int i = 0 ; i < FEEDER_TURNS; i++) {
       #if (SERIAL_ON == true)
         Serial.print(F("feeding turn: "));
         Serial.println(i);
+        delay(300);
       #endif
 
       FeederStepper.setSpeed(STEPPER_MOTOR_SPEED);
@@ -550,6 +567,7 @@ void feed() {
     #if (SERIAL_ON == true)
       Serial.println(F("feeding finished"));
       Serial.println();
+      delay(300);
     #endif
 
   #endif
@@ -561,62 +579,65 @@ void setRelay(const unsigned int& relayPin, const bool& state){
   // sets relay state
   //
   #if (USE_RELAYS == true)
-    cli();
+    ATOMIC_BLOCK( ATOMIC_RESTORESTATE )
+    {
+      delay(100);
 
-    switch (relayPin) {
-      
-      case RELAY_LIGHTS_PIN:              
-        // lightening relay
-        if (!ENABLE_LIGHTS || _ligthOn == state)
-          return;
-        _ligthOn = state;
-        #if (SERIAL_ON == true)
-          Serial.print(F(" - relay light: "));
-          Serial.println(state ? F("on") : F("off"));
-        #endif
-        break;
+      switch (relayPin) {
+        
+        case RELAY_LIGHTS_PIN:              
+          // lightening relay
+          if (!ENABLE_LIGHTS || _ligthOn == state)
+            return;
+          _ligthOn = state;
+          #if (SERIAL_ON == true)
+            Serial.print(F(" - relay light: "));
+            Serial.println(state ? F("on") : F("off"));
+          #endif
+          break;
 
-      case RELAY_HEATER_PIN:
-        // heater relay
-        if (_heaterOn == state)
-          return;
-        _heaterOn = state;        
-        #if (SERIAL_ON == true)
-          Serial.print(F(" - relay heater: "));
-          Serial.println(state ? F("on") : F("off"));
-        #endif
-        break;
+        case RELAY_HEATER_PIN:
+          // heater relay
+          if (_heaterOn == state)
+            return;
+          _heaterOn = state;        
+          #if (SERIAL_ON == true)
+            Serial.print(F(" - relay heater: "));
+            Serial.println(state ? F("on") : F("off"));
+          #endif
+          break;
 
-      case RELAY_SUMP_PUMP_PIN:
-        if (_sumpPumpOn == state)
-          return;
-        _sumpPumpOn = state;
-        #if (SERIAL_ON == true)
-          Serial.print(F(" - relay sump: "));
-          Serial.println(state ? F("on") : F("off"));
-          if (USE_SUMP_ON_OFF)
-            Serial.print(F(" [pwm mode]"));
-        #endif
-        break;
+        case RELAY_SUMP_PUMP_PIN:
+          if (_sumpPumpOn == state)
+            return;
+          _sumpPumpOn = state;
+          #if (SERIAL_ON == true)
+            Serial.print(F(" - relay sump: "));
+            Serial.println(state ? F("on") : F("off"));
+            if (USE_SUMP_ON_OFF)
+              Serial.print(F(" [pwm mode]"));
+          #endif
+          break;
 
-      case RELAY_WATER_REPOSITION_PUMP_PIN:
-        if (_repoPumpOn == state)
-          return;
-        _repoPumpOn = state;
-        #if (SERIAL_ON == true)
-          Serial.print(F(" - relay repo: "));
-          Serial.println(state ? F("on") : F("off"));
-        #endif
-        break;
+        case RELAY_WATER_REPOSITION_PUMP_PIN:
+          if (_repoPumpOn == state)
+            return;
+          _repoPumpOn = state;
+          #if (SERIAL_ON == true)
+            Serial.print(F(" - relay repo: "));
+            Serial.println(state ? F("on") : F("off"));
+          #endif
+          break;
+      }
+
+      // relays are active LOW  
+      digitalWrite(relayPin, (state ? LOW : HIGH));
+
+      #if (USE_HOME_ASSISTANT == true)
+        // update home assistant states
+        updateState();
+      #endif
     }
-
-    // relays are active LOW  
-    digitalWrite(relayPin, (state ? LOW : HIGH));
-
-    #if (USE_HOME_ASSISTANT == true)
-      // update home assistant states
-      updateState();
-    #endif
 
   #endif
 }
@@ -628,8 +649,7 @@ void setRelay(const unsigned int& relayPin, const bool& state){
     //
     // Testing routine
     //            
-    while (true) {
-      sei();
+    while (true) {      
       Serial.println(F("TESTING MODE"));
       Serial.println(F("1) Water Level Sensor"));
       Serial.println(F("2) Relay 1 - Light"));
