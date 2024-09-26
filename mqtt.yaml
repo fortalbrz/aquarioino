@@ -1,0 +1,189 @@
+- sensor:
+  #
+  # Soil moisture (front garden)
+  #
+  name: "Garden Soil moisture"
+  unique_id: front_garden_soil_moisture
+  device_class: "moisture"
+  unit_of_measurement: "%"
+  suggested_display_precision: 0
+  state_topic: "gardenino/state"
+  value_template: "{{ value_json.moisture }}"
+  json_attributes_topic: "gardenino/state"
+  json_attributes_template: "{{ value_json | tojson }}"
+  icon: mdi:water
+  availability_mode: latest
+  expire_after: 0
+  qos: 0
+  availability:
+    - topic: "gardenino/available"
+      payload_available: "online"
+      payload_not_available: "offline"
+
+- sensor:
+  #
+  # Soil condition (front garden)
+  #
+  name: "Garden Soil Condition"
+  unique_id: front_garden_soil_condition
+  device_class: "enum"
+  state_topic: "gardenino/state"
+  value_template: "{{ value_json.soil }}"
+  icon: mdi:water
+  availability_mode: latest
+  expire_after: 0
+  qos: 0
+  availability:
+    - topic: "gardenino/available"
+      payload_available: "online"
+      payload_not_available: "offline"
+
+- switch:
+  #
+  # Front garden watering: on/off
+  #
+  name: "Garden Watering"
+  unique_id: front_garden_watering
+  state_topic: "gardenino/state"
+  value_template: "{{ value_json.relay_1 }}"
+  state_on: "on"
+  state_off: "off"
+  command_topic: "gardenino/cmd"
+  payload_on: "relay 1 on"
+  payload_off: "relay 1 off"
+  availability:
+    - topic: "gardenino/available"
+      payload_available: "online"
+      payload_not_available: "offline"
+  availability_mode: latest
+  enabled_by_default: true
+  optimistic: false
+  qos: 0
+  retain: true
+  icon: mdi:sprinkler
+  device_class: "outlet"
+
+- switch:
+  #
+  # Front garden lights: on/off
+  #
+  name: "Garden Decorative Lights"
+  unique_id: front_garden_small_lights
+  state_topic: "gardenino/state"
+  value_template: "{{ value_json.relay_2 }}"
+  state_on: "on"
+  state_off: "off"
+  command_topic: "gardenino/cmd"
+  payload_on: "relay 2 on"
+  payload_off: "relay 2 off"
+  availability:
+    - topic: "gardenino/available"
+      payload_available: "online"
+      payload_not_available: "offline"
+  availability_mode: latest
+  enabled_by_default: true
+  optimistic: false
+  qos: 0
+  retain: true
+  icon: mdi:post-lamp
+  device_class: "outlet"
+
+- switch:
+  #
+  # Front garden light flood: on/off
+  #
+  name: "Garden Light Flood 1"
+  unique_id: front_garden_light_flood
+  state_topic: "gardenino/state"
+  value_template: "{{ value_json.relay_3 }}"
+  state_on: "on"
+  state_off: "off"
+  command_topic: "gardenino/cmd"
+  payload_on: "relay 3 on"
+  payload_off: "relay 3 off"
+  availability:
+    - topic: "gardenino/available"
+      payload_available: "online"
+      payload_not_available: "offline"
+  availability_mode: latest
+  enabled_by_default: true
+  optimistic: false
+  qos: 0
+  retain: true
+  icon: mdi:light-flood-down
+  device_class: "outlet"
+
+- switch:
+  #
+  # Front garden light flood (neighbor): on/off
+  #
+  name: "Garden Light Flood 2"
+  unique_id: front_garden_light_flood_neighbor
+  state_topic: "gardenino/state"
+  value_template: "{{ value_json.relay_4 }}"
+  state_on: "on"
+  state_off: "off"
+  command_topic: "gardenino/cmd"
+  payload_on: "relay 4 on"
+  payload_off: "relay 4 off"
+  availability:
+    - topic: "gardenino/available"
+      payload_available: "online"
+      payload_not_available: "offline"
+  availability_mode: latest
+  enabled_by_default: true
+  optimistic: false
+  qos: 0
+  retain: true
+  icon: mdi:light-flood-down
+  device_class: "outlet"
+
+- switch:
+  #
+  # Enables the moisuture sensor to lock watering on front garden (wet soil)
+  #
+  name: "Enables moisuture Sensor to Lock Watering"
+  unique_id: front_garden_enables_moisture_sensor
+  state_topic: "gardenino/state"
+  value_template: "{{ value_json.sensor }}"
+  state_on: "on"
+  state_off: "off"
+  command_topic: "gardenino/cmd"
+  payload_on: "sensor on"
+  payload_off: "sensor off"
+  availability:
+    - topic: "gardenino/available"
+      payload_available: "online"
+      payload_not_available: "offline"
+  availability_mode: latest
+  enabled_by_default: true
+  optimistic: false
+  qos: 0
+  retain: true
+  icon: mdi:sprinkler
+  device_class: "outlet"
+
+- switch:
+  #
+  # Enables watering watchdog on front garden (5 min)
+  #
+  name: "Enables Watering Watchdog"
+  unique_id: front_garden_enables_watering_watchdog
+  state_topic: "gardenino/state"
+  value_template: "{{ value_json.watchdog }}"
+  state_on: "on"
+  state_off: "off"
+  command_topic: "gardenino/cmd"
+  payload_on: "watchdog on"
+  payload_off: "watchdog off"
+  availability:
+    - topic: "gardenino/available"
+      payload_available: "online"
+      payload_not_available: "offline"
+  availability_mode: latest
+  enabled_by_default: true
+  optimistic: false
+  qos: 0
+  retain: true
+  icon: mdi:sprinkler
+  device_class: "outlet"
