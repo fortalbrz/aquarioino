@@ -1,0 +1,125 @@
+      - binary_sensor:
+          #
+          # Fish tank - low water level: on/off
+          #
+          name: "Fish Tank Low Water Level"
+          state_topic: "bettaino/state"
+          value_template: "{{ value_json.water_low }}"
+          payload_on: "on"
+          payload_off: "off"
+          availability:
+            - topic: "bettaino/available"
+              payload_available: "online"
+              payload_not_available: "offline"
+          qos: 0
+          device_class: "problem"
+          icon: mdi:hydraulic-oil-level
+
+      - switch:
+          #
+          # Fish tank lights: on/off
+          #
+          name: "Fish Tank Lights"
+          unique_id: aquarium_home_lights
+          state_topic: "bettaino/state"
+          value_template: "{{ value_json.light }}"
+          state_on: "on"
+          state_off: "off"
+          command_topic: "bettaino/cmd"
+          payload_on: "light on"
+          payload_off: "light off"
+          availability:
+            - topic: "bettaino/available"
+              payload_available: "online"
+              payload_not_available: "offline"
+          availability_mode: latest
+          enabled_by_default: true
+          optimistic: false
+          qos: 0
+          retain: true
+          device_class: "outlet"
+          icon: mdi:spotlight-beam
+
+      - switch:
+          #
+          # Fish tank (home) - enables low water level to stop sump pump: on/off
+          #
+          name: "Fisk Tank Low Water Level Blocks Sump Pump Enabled"
+          unique_id: fisk_tank_home_low_water_level_block_sump_pump_enabled
+          state_topic: "bettaino/state"
+          value_template: "{{ value_json.sump_enabled }}"
+          state_on: "on"
+          state_off: "off"
+          command_topic: "bettaino/cmd"
+          payload_on: "sump enable"
+          payload_off: "sump disable"
+          availability:
+            - topic: "bettaino/available"
+              payload_available: "online"
+              payload_not_available: "offline"
+          availability_mode: latest
+          enabled_by_default: true
+          optimistic: false
+          qos: 0
+          retain: true
+          device_class: "outlet"
+          icon: mdi:pump
+
+      - switch:
+          #
+          # Fish tank - enables water reposition pump: on/off
+          #
+          name: "Fisk Tank Water Reposition Pump Enabled"
+          unique_id: fisk_tank_home_water_reposition_pump_enabled
+          state_topic: "bettaino/state"
+          value_template: "{{ value_json.repo_enabled }}"
+          state_on: "on"
+          state_off: "off"
+          command_topic: "bettaino/cmd"
+          payload_on: "repo enable"
+          payload_off: "repo disable"
+          availability:
+            - topic: "bettaino/available"
+              payload_available: "online"
+              payload_not_available: "offline"
+          availability_mode: latest
+          enabled_by_default: true
+          optimistic: false
+          qos: 0
+          retain: true
+          device_class: "outlet"
+          icon: mdi:pump
+
+      - button:
+          #
+          # fisk tank feeding (home)
+          #
+          name: "Fisk Tank Feed"
+          unique_id: aquarium_home_feed
+          command_topic: "bettaino/cmd"
+          payload_press: "feed"
+          availability:
+            - topic: "bettaino/available"
+              payload_available: "online"
+              payload_not_available: "offline"
+          qos: 0
+          retain: false
+          entity_category: "config"
+          device_class: "restart"
+
+      - button:
+          #
+          # plays music
+          #
+          name: "Fisk Tank Plays Music"
+          unique_id: aquario_home_play
+          command_topic: "bettaino/cmd"
+          payload_press: "play"
+          availability:
+            - topic: "bettaino/available"
+              payload_available: "online"
+              payload_not_available: "offline"
+          qos: 0
+          retain: false
+          entity_category: "config"
+          device_class: "restart"

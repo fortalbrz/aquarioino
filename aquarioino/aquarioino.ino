@@ -86,7 +86,7 @@
 //  - turn off button
 //  - restart button
 // - protects sump pump of running out of water
-// - local time synchronization with home assistant (optional - see configuration flags)//
+// - local time synchronization with home assistant (optional - see configuration flags)
 //
 // Materials:
 // - 1 arduino mega 2560 pro (mini) - https://produto.mercadolivre.com.br/MLB-2012119523-arduino-mega-pro-mini-lacrado-_JM
