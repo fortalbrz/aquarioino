@@ -5,13 +5,9 @@
 
 <center>
 
-![logo](https://github.com/fortalbrz/aquaioino/main/bettaino/img/logo.png?raw=true)
+![logo](https://github.com/fortalbrz/aquarioino/blob/main/bettaino/img/logo.png?raw=true)
 
 </center>
-
-I made this project to make use of an old 8 chanels relay module with a low cost NodeMCU module... :smiley: 
-The goal is to control the garden watering, some decorative led lights, a couple of light flood, etc 
-using [Home Assistant](https://home-assistant.io) with *MQTT* protocol (e.g., *mosquitto broker*).
 
 [Home Assistant](https://home-assistant.io) is free and open-source software used for home automation. It serves as an integration platform and smart home hub, allowing users to control smart home devices. This project objective is to control and integrate a fisk tank with Home Assistant using the [MQTT]((https://www.home-assistant.io/integrations/mqtt/)) protocol. The MQTT (aka MQ Telemetry Transport) is a machine-to-machine or "*Internet of Things*" connectivity protocol on top of TCP/IP. It allows extremely lightweight publish/subscribe messaging transport.
 
