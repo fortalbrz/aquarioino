@@ -116,6 +116,13 @@ The ESP-01 module should be programed with the sketch with the [Arduino IDE](htt
   - select board "**NodeMCU 1.0 (ESP-12E Module)**" and connected COM port (checks at Windows "device manager")
   - select Sketch > Upload
 
+
+### Error Codes (buzzer)
+   - 2 fast bips: Wifi error
+   - 3 fast bips: MQTT broker error
+   - 5 bips: low water level
+
+
 ### Wiring Testing:
 
 Sets the macro "**WIRING_TEST_MODE**" as true in order to check buttons, relays and water sensor connections (testing only)
@@ -267,7 +274,10 @@ And creates a file "*[mqtt.yaml](https://github.com/fortalbrz/aquarioino/blob/ma
      - "*light on/off*": turns on/off the lights (i.e. relay #2)
      - "*sump enable/disable*": enables/disables sump pump automation routine
      - "*repo enable/disable*": enables/disables water reposition pump automation routine
-     - "*play*": plays star wars theme [for any notification]
+     - "*alarm on/off*": turns on/off a low water level alarm sound
+     - "*beep*": plays a beep sound [for any notification]
+     - "*play [sw/dv/tetris/mario/got/gf/nokia/notice]*": plays an tune by name [for any notification] (*none for random*)
+     - "*emergency on/off*": emergency alarm [for any notification]
      - "*sensor on/off*": enables/disables the water level sensor to block the sump pump [debug only]
      - "*relays on/off*": turn on/off all relays [debug only]
      - "*refresh*": update MQTT state [debug only]
@@ -282,6 +292,7 @@ And creates a file "*[mqtt.yaml](https://github.com/fortalbrz/aquarioino/blob/ma
              "repo": "off",          // relay #4 state (water reposition pump): [on/off]
              "sump_enabled": "on",   // sump pump automation routine enabled: [on/off]
              "repo_enabled": "off",  // water reposition pump automation routine enabled: [on/off]
+             "alarm": "on",          // play a alarm sound on low water level: [on/off]
              "sensor": "on",         // water level sensor enabled to block the sump pump: [on/off]
              "water_low": "off"      // low water level: [on/off]
          } 
@@ -303,7 +314,7 @@ And creates a file "*[mqtt.yaml](https://github.com/fortalbrz/aquarioino/blob/ma
 | ENABLE_WATER_REPOSITION    | true    | enables/disables water level sensors (disable it to not use the water level sensors)          |
 | DEBUG_MODE                 | false   | true to debug on serial monitor (debug), false otherwise                                      |
 | WIRING_TEST_MODE           | false   | enables/disables a wiring test routine                                                        |
-| PLAY_TUNE                  | true    | enables play star wars theme                                                                  |
+| PLAY_TUNE                  | true    | enables play music themes                                                                 |
 
 
 <hr>

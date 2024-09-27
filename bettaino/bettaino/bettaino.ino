@@ -44,6 +44,7 @@
 //   - feeding button
 //   - lightening switch
 //   - "sump" and "water reposition" pumps automation switches
+// - buzzer for error notifications (and play star wars tunes!)
 //
 // Water Replenishment (by evaporation loses):
 //  this routine uses a water level sensor to refill the fisk tank with clean water (from an external container)
@@ -102,6 +103,23 @@
 //   - capacitor 100uF (positive) --> +5 V power source (VCC) (optional)
 //   - capacitor 100uF (negative/"minus sign") --> resistor 10k ohms "D" terminal 2 (optional)
 //
+//   Snubber Filter:
+//
+//   The suppressor filter (aka "snubber"), is a device that serves to limit voltage spikes. On this project
+//   is recommend the snubber filter in parallel with the pumps (eletric motors) outlets.
+//
+//      ---------------[relay]----
+//      o         |               |
+//     pump    [R=10R]            |
+//    outlet      |              Vac              
+//      o     [C=470nF]           |
+//      |         |               |
+//      --------------------------
+//
+//   The snubber is a RC filter, with recommended values of R=10 olhm (1/8 w) and C=470nf (600v)
+//   REMARK: Do not use the snubber filter within a LED light outlet, or a "ghost light" effect 
+//   may happen when the light is off.
+//
 //   Flashing the code:
 //
 //   Drivers (CH340g) for NodeMCU:
@@ -116,6 +134,12 @@
 //    - install the ESP8266 Community package ("esp8266" by ESP8266 Community)//   
 //    - select board "NodeMCU 1.0 (ESP-12E Module)" and coonected COM port (checks at Windows "device manager")
 //    - select "Sketch" > "Upload"
+//
+//
+// Error Codes (buzzer)
+//   - 2 fast bips: Wifi error
+//   - 3 fast bips: MQTT broker error
+//   - 5 bips: low water level
 //
 // Wiring Testing:
 //  sets the macro "WIRING_TEST_MODE" as true in order to check buttons, relays and water sensor connections (testing only)
@@ -134,7 +158,7 @@
 //   - ENABLE_WATER_REPOSITION: enables/disables water level sensors (disable it to not use the water level sensors)
 //   - DEBUG_MODE: enables/disables serial monitor debugging messages
 //   - WIRING_TEST_MODE: enables/disables a wiring test mode
-//   - PLAY_TUNE: enables play star wars theme
+//   - PLAY_TUNE: enables play music theme
 //
 //  MQTT topics:
 //    - bettaino/available: sensors availability ["online"/"offline"]
@@ -143,7 +167,10 @@
 //         "light on/off": turns on/off the lights (i.e. relay #2)
 //         "sump enable/disable": enables/disables sump pump automation routine
 //         "repo enable/disable": enables/disables water reposition pump automation routine
-//         "play": plays star wars theme [for any notification]
+//         "alarm on/off": turns on/off a low water level alarm sound
+//         "beep": plays a beep sound [for any notification]
+//         "play [sw/dv/tetris/mario/got/gf/nokia/notice]": plays an tune by name [for any notification] (none for random)
+//         "emergency on/off": emergency alarm [for any notification]
 //         "sensor on/off": enables/disables the water level sensor to block the sump pump [debug only]
 //         "relays on/off": turn on/off all relays [debug only]
 //         "refresh": update MQTT state [debug only]
@@ -154,6 +181,7 @@
 //            "repo": "off",          // relay #4 state (water reposition pump): [on/off]
 //            "sump_enabled": "on",   // sump pump automation routine enabled: [on/off]
 //            "repo_enabled": "off",  // water reposition pump automation routine enabled: [on/off]
+//            "alarm": "on",          // play a alarm sound on low water level: [on/off]
 //            "sensor": "on",         // water level sensor enabled to block the sump pump: [on/off]
 //            "water_low": "off"      // low water level: [on/off]
 //         } 
@@ -162,48 +190,50 @@
 // Jorge Albuquerque (2024) - https://linkedin.com/in/jorgealbuquerque
 // https://www.jorgealbuquerque.com
 //
-#define DEBUG_MODE false                // enables/disables serial debugging messages
-#define WIRING_TEST_MODE false          // enables/disables testing mode
-#define ENABLE_WATER_REPOSITION true    // true for enable water reposition (reposition pump), false otherwise
-#define USE_INTERRUPTIONS false         // use interruptions on push buttons
-#define PLAY_TUNE true                  // enables play star wars theme
+#define DEBUG_MODE false                            // enables/disables serial debugging messages
+#define WIRING_TEST_MODE false                      // enables/disables testing mode
+#define ENABLE_WATER_REPOSITION true                // true for enable water reposition (reposition pump), false otherwise
+#define USE_INTERRUPTIONS false                     // use interruptions on push buttons
+#define PLAY_TUNE true                              // enables play music
 //------------------------------------------------------------------------------------------------------------------
 //
 // Configuration flags (enables or disables features in order to "skip" unwanted hardware)
 //
 //------------------------------------------------------------------------------------------------------------------
 // Wi-fi setup
-#define WIFI_SSID "wifi ssid"                // Wi-fi SSID
-#define WIFI_PASSWORD "wifi password"        // Wi-fi password
+#define WIFI_SSID "jorge cps"                       // Wi-fi SSID
+#define WIFI_PASSWORD "casa1976bonita1980"          // Wi-fi password
 // MQTT setup
-#define MQTT_BROKER_ADDRESS "192.168.68.10"  // MQTT broker server ip
-#define MQTT_BROKER_PORT 1883                // MQTT broker port
-#define MQTT_USERNAME "mqtt-user"            // can be omitted if not needed
-#define MQTT_PASSWORD "mqtt-password"        // can be omitted if not needed
+#define MQTT_BROKER_ADDRESS "192.168.68.10"         // MQTT broker server IP
+#define MQTT_BROKER_PORT 1883                       // MQTT broker port
+#define MQTT_USERNAME "mqtt-user"                   // can be omitted if not needed
+#define MQTT_PASSWORD "mqtt"                        // can be omitted if not needed
 // MQTT topics
-#define MQTT_COMMAND_TOPIC "betaino/cmd"             // MQTT topic for send door commands (e.g., open from door)
-#define MQTT_STATUS_TOPIC "betaino/status"           // MQTT topic for doorbell status
-#define MQTT_AVAILABILITY_TOPIC "betaino/available"  // MQTT topic for availability notification (home assistant "unavailable" state)
-#define MQTT_DEVICE_ID "betaino_12fmo43iowerwe2"     // MQTT session identifier
+#define MQTT_COMMAND_TOPIC "bettaino/cmd"             // MQTT topic for send door commands (e.g., open from door)
+#define MQTT_STATUS_TOPIC "bettaino/status"           // MQTT topic for doorbell status
+#define MQTT_AVAILABILITY_TOPIC "bettaino/available"  // MQTT topic for availability notification (home assistant "unavailable" state)
+#define MQTT_DEVICE_ID "bettaino_12fmo43iowerwe2"     // MQTT session identifier
 // others
-#define MQTT_STATUS_UPDATE_TIME 120000  // time for send and status update (default: 2 min)
-#define MQTT_AVAILABILITY_TIME 60000    // elapsed time to send MQTT availability, in miliseconds (default: 1 min)
-#define BUTTON_SINGLE_PUSH_TIME 300     // time to avoid double push button press (better usability)
-#define BUZZER_POWER_ON_TIME 800        // buzzen power on time when the doorbell button is pressed
-#define SERIAL_BAUDRATE 9600            // serial monitor baud rate (only for debuging)
+#define MQTT_STATUS_UPDATE_TIME 120000               // time for send and status update (default: 2 min)
+#define MQTT_AVAILABILITY_TIME 60000                 // elapsed time to send MQTT availability, in miliseconds (default: 1 min)
+#define BUTTON_SINGLE_PUSH_TIME 300                  // time to avoid double push button press (better usability)
+#define BUZZER_POWER_ON_TIME 800                     // default buzzen power on time (beep)
+#define WATER_SENSOR_LOW_COUNTER 15                   // counter for smooth transition to "low water state": avoids false positives
+#define WATER_SENSOR_HIGH_COUNTER 25                  // counter for smooth transition to "water state refiled": avoids false negatives
+#define SERIAL_BAUDRATE 9600                         // serial monitor baud rate (only for debuging)
 #define EEPROM_ADDRESS 0
 #define RELAY_SIZE 4
 //
 // pins definitions (ModeMCU)
 //
-#define WATER_LOW_LEVEL_SENSOR_PIN A0       // A0: water level sensor (should be located at desired aquarium level: open when water is low)
-#define PUSH_BUTTON_FEEDING_PIN D1          // D1: pull-up (high)
-#define PUSH_BUTTON_LIGHT_PIN D2            // D2: pull-up (high)
-#define BUZZER_PIN D3                       // D3: pull-up (high) (remark: boot fails on low)
-#define RELAY_FEEDER_PIN D4                 // D4: pull-up (high) - relay #1: feeder push button [connected to build-in LED]
-#define RELAY_LIGHT_PIN D5                  // D5: pull-up (high) - relay #2: light (normally open)
-#define RELAY_SUMP_PUMP_PIN D6              // D6: pull-up (high) - relay #3: sump pump (normally open, common on 110vac)
-#define RELAY_WATER_REPOSITION_PUMP_PIN D7  // D7: pull-up (high) - relay #4: water reposition pump (normally open, common on 110vac)
+#define WATER_LOW_LEVEL_SENSOR_PIN A0                // A0: water level sensor (should be located at desired aquarium level: open when water is low)
+#define PUSH_BUTTON_FEEDING_PIN D1                   // D1: pull-up (high) - tactile push button "feed"
+#define PUSH_BUTTON_LIGHT_PIN D2                     // D2: pull-up (high) - tactile push button "lights"
+#define BUZZER_PIN D3                                // D3: pull-up (high) (remark: boot fails on low) - buzzer
+#define RELAY_FEEDER_PIN D4                          // D4: pull-up (high) - relay #1: feeder push button [connected to build-in LED]
+#define RELAY_LIGHT_PIN D5                           // D5: pull-up (high) - relay #2: light (normally open)
+#define RELAY_SUMP_PUMP_PIN D6                       // D6: pull-up (high) - relay #3: sump pump (normally open, common on 110vac)
+#define RELAY_WATER_REPOSITION_PUMP_PIN D7           // D7: pull-up (high) - relay #4: water reposition pump (normally open, common on 110vac)
 //
 // protocol commands
 //
@@ -219,7 +249,21 @@
 #define MQTT_COMMAND_DEBUG_RELAYS_ON "relays on"
 #define MQTT_COMMAND_DEBUG_RELAYS_OFF "relays off"
 #define MQTT_COMMAND_DEBUG_REFRESH "refresh"
+#define MQTT_COMMAND_DEBUG_BEEP "beep"
 #define MQTT_COMMAND_DEBUG_PLAY "play"
+#define MQTT_COMMAND_DEBUG_PLAY_NOTICE "play notice"
+#define MQTT_COMMAND_DEBUG_PLAY_STAR_WARS "play sw"
+#define MQTT_COMMAND_DEBUG_PLAY_DARTH_VADER "play dv"
+#define MQTT_COMMAND_DEBUG_PLAY_TETRIS "play tetris"
+#define MQTT_COMMAND_DEBUG_PLAY_MARIO "play mario"
+#define MQTT_COMMAND_DEBUG_PLAY_GOT "play got"
+#define MQTT_COMMAND_DEBUG_PLAY_GODFATHER "play gf"
+#define MQTT_COMMAND_DEBUG_PLAY_NOKIA "play nokia"
+#define MQTT_COMMAND_DEBUG_LOW_LEVEL_ALARM_ON "alarm on"
+#define MQTT_COMMAND_DEBUG_LOW_LEVEL_ALARM_OFF "alarm off"
+#define MQTT_COMMAND_DEBUG_EMERGENCY_ALARM_ON "emergency on"
+#define MQTT_COMMAND_DEBUG_EMERGENCY_ALARM_OFF "emergency off"
+
 
 //------------------------------------------------------------------------------------------------------------------
 
@@ -241,10 +285,15 @@ bool _sensorEnabled = true;
 bool _sumpEnabled = true;
 bool _repoEnabled = true;
 bool _lowWaterLevel = false;
+bool _alarmEnabled = true;
+byte _state = 0x00; 
 
+unsigned int _counter;
 unsigned long _lastAvailabilityTime = 0;
 unsigned long _lastStatusUpdateTime = 0;
+unsigned long _lastLowWaterLevelWarningTime = 0;
 unsigned long _lastButtonPress = 0;
+
 
 byte RELAY_PINS[] = {RELAY_FEEDER_PIN, RELAY_LIGHT_PIN, RELAY_SUMP_PUMP_PIN, RELAY_WATER_REPOSITION_PUMP_PIN};
 
@@ -346,9 +395,6 @@ byte RELAY_PINS[] = {RELAY_FEEDER_PIN, RELAY_LIGHT_PIN, RELAY_SUMP_PUMP_PIN, REL
   #define NOTE_DS8 4978
   #define REST 0
 
-  // change this to make the song slower or faster
-  int tempo = 108;
-
   // change this to whichever pin you want to use
   int buzzer = BUZZER_PIN;
 
@@ -356,24 +402,135 @@ byte RELAY_PINS[] = {RELAY_FEEDER_PIN, RELAY_LIGHT_PIN, RELAY_SUMP_PUMP_PIN, REL
   // a 4 means a quarter note, 8 an eighteenth , 16 sixteenth, so on
   // !!negative numbers are used to represent dotted notes,
   // so -4 means a dotted quarter note, that is, a quarter plus an eighteenth!!
-  int melody[] = {
-    // Dart Vader theme (Imperial March) - Star wars
-    // Score available at https://musescore.com/user/202909/scores/1141521
-    // The tenor saxophone part was used
+  
+  // star wars theme
+  int melody_star_wars[] = {
     NOTE_F5, 2, NOTE_C6, 2,
     NOTE_AS5, 8, NOTE_A5, 8, NOTE_G5, 8, NOTE_F6, 2, NOTE_C6, 4,
     NOTE_AS5, 8, NOTE_A5, 8, NOTE_G5, 8, NOTE_F6, 2, NOTE_C6, 4,
     NOTE_AS5, 8, NOTE_A5, 8, NOTE_AS5, 8, NOTE_G5, 2
   };
 
-  // sizeof gives the number of bytes, each int value is composed of two bytes (16 bits)
-  // there are two values per note (pitch and duration), so for each note there are four bytes
-  int notes = sizeof(melody) / sizeof(melody[0]) / 2;
+  // darth vader imperial march
+  int melody_darth_vader[] = {  
+    NOTE_A4,4, NOTE_A4,4, NOTE_A4,4, NOTE_F4,-8, NOTE_C5,16,
+    NOTE_A4,4, NOTE_F4,-8, NOTE_C5,16, NOTE_A4,2,//4
+    NOTE_E5,4, NOTE_E5,4, NOTE_E5,4, NOTE_F5,-8, NOTE_C5,16,
+    NOTE_A4,4, NOTE_F4,-8, NOTE_C5,16, NOTE_A4,2,    
+    NOTE_A5,4, NOTE_A4,-8, NOTE_A4,16, NOTE_A5,4, NOTE_GS5,-8, NOTE_G5,16, //7 
+    NOTE_DS5,16, NOTE_D5,16, NOTE_DS5,8, REST,8, NOTE_A4,8, NOTE_DS5,4, NOTE_D5,-8, NOTE_CS5,16,
+    NOTE_C5,16, NOTE_B4,16, NOTE_C5,16, REST,8, NOTE_F4,8, NOTE_GS4,4, NOTE_F4,-8, NOTE_A4,-16,//9
+    NOTE_C5,4, NOTE_A4,-8, NOTE_C5,16, NOTE_E5,2
+  };
 
-  // this calculates the duration of a whole note in ms
-  int wholenote = (60000 * 4) / tempo;
+  // tetris
+  int melody_tetris[] = {
+    NOTE_E5, 4,  NOTE_B4,8,  NOTE_C5,8,  NOTE_D5,4,  NOTE_C5,8,  NOTE_B4,8,
+    NOTE_A4, 4,  NOTE_A4,8,  NOTE_C5,8,  NOTE_E5,4,  NOTE_D5,8,  NOTE_C5,8,
+    NOTE_B4, -4,  NOTE_C5,8,  NOTE_D5,4,  NOTE_E5,4,
+    NOTE_C5, 4,  NOTE_A4,4,  NOTE_A4,8,  NOTE_A4,4,  NOTE_B4,8,  NOTE_C5,8,
+    NOTE_D5, -4,  NOTE_F5,8,  NOTE_A5,4,  NOTE_G5,8,  NOTE_F5,8,
+    NOTE_E5, -4,  NOTE_C5,8,  NOTE_E5,4,  NOTE_D5,8,  NOTE_C5,8,
+    NOTE_B4, 4,  NOTE_B4,8,  NOTE_C5,8,  NOTE_D5,4,  NOTE_E5,4,
+    NOTE_C5, 4,  NOTE_A4,4,  NOTE_A4,4, REST, 4
+  };
 
-  int divider = 0, noteDuration = 0;
+  // super mario bros
+  int melody_mario[] = {
+    NOTE_E5,8, NOTE_E5,8, REST,8, NOTE_E5,8, REST,8, NOTE_C5,8, NOTE_E5,8, //1
+    NOTE_G5,4, REST,4, NOTE_G4,8, REST,4, 
+    NOTE_C5,-4, NOTE_G4,8, REST,4, NOTE_E4,-4, // 3
+    NOTE_A4,4, NOTE_B4,4, NOTE_AS4,8, NOTE_A4,4,
+    NOTE_G4,-8, NOTE_E5,-8, NOTE_G5,-8, NOTE_A5,4, NOTE_F5,8, NOTE_G5,8,
+    REST,8, NOTE_E5,4,NOTE_C5,8, NOTE_D5,8, NOTE_B4,-4,
+    NOTE_C5,-4, NOTE_G4,8, REST,4, NOTE_E4,-4, // repeats from 3
+    NOTE_A4,4, NOTE_B4,4, NOTE_AS4,8, NOTE_A4,4,
+    NOTE_G4,-8, NOTE_E5,-8, NOTE_G5,-8, NOTE_A5,4, NOTE_F5,8, NOTE_G5,8,
+    REST,8, NOTE_E5,4,NOTE_C5,8, NOTE_D5,8, NOTE_B4,-4,
+    
+    REST,4, NOTE_G5,8, NOTE_FS5,8, NOTE_F5,8, NOTE_DS5,4, NOTE_E5,8,//7
+    REST,8, NOTE_GS4,8, NOTE_A4,8, NOTE_C4,8, REST,8, NOTE_A4,8, NOTE_C5,8, NOTE_D5,8,
+    REST,4, NOTE_DS5,4, REST,8, NOTE_D5,-4,
+    NOTE_C5,2, REST,2,
+
+    REST,4, NOTE_G5,8, NOTE_FS5,8, NOTE_F5,8, NOTE_DS5,4, NOTE_E5,8,//repeats from 7
+    REST,8, NOTE_GS4,8, NOTE_A4,8, NOTE_C4,8, REST,8, NOTE_A4,8, NOTE_C5,8, NOTE_D5,8,
+    REST,4, NOTE_DS5,4, REST,8, NOTE_D5,-4,
+    NOTE_C5,2, REST,2
+  };
+
+  // game of thrones theme
+  int melody_game_of_thrones[] = {
+    NOTE_G4,8, NOTE_C4,8, NOTE_DS4,16, NOTE_F4,16, NOTE_G4,8, NOTE_C4,8, NOTE_DS4,16, NOTE_F4,16, //1
+    NOTE_G4,8, NOTE_C4,8, NOTE_DS4,16, NOTE_F4,16, NOTE_G4,8, NOTE_C4,8, NOTE_DS4,16, NOTE_F4,16,
+    NOTE_G4,8, NOTE_C4,8, NOTE_E4,16, NOTE_F4,16, NOTE_G4,8, NOTE_C4,8, NOTE_E4,16, NOTE_F4,16,
+    NOTE_G4,8, NOTE_C4,8, NOTE_E4,16, NOTE_F4,16, NOTE_G4,8, NOTE_C4,8, NOTE_E4,16, NOTE_F4,16,
+    NOTE_G4,-4, NOTE_C4,-4,//5
+
+    NOTE_DS4,16, NOTE_F4,16, NOTE_G4,4, NOTE_C4,4, NOTE_DS4,16, NOTE_F4,16, //6
+    NOTE_D4,-1, //7 and 8
+    NOTE_F4,-4, NOTE_AS3,-4,
+    NOTE_DS4,16, NOTE_D4,16, NOTE_F4,4, NOTE_AS3,-4,
+    NOTE_DS4,16, NOTE_D4,16, NOTE_C4,-1, //11 and 12
+  };
+
+  // godfather theme
+  int melody_godfather[] = {
+    REST, 4, REST, 8, REST, 8, REST, 8, NOTE_E4, 8, NOTE_A4, 8, NOTE_C5, 8, //1
+    NOTE_B4, 8, NOTE_A4, 8, NOTE_C5, 8, NOTE_A4, 8, NOTE_B4, 8, NOTE_A4, 8, NOTE_F4, 8, NOTE_G4, 8,
+    NOTE_E4, 2, NOTE_E4, 8, NOTE_A4, 8, NOTE_C5, 8,
+    NOTE_B4, 8, NOTE_A4, 8, NOTE_C5, 8, NOTE_A4, 8, NOTE_C5, 8, NOTE_A4, 8, NOTE_E4, 8, NOTE_DS4, 8,
+    
+    NOTE_D4, 2, NOTE_D4, 8, NOTE_F4, 8, NOTE_GS4, 8, //5
+    NOTE_B4, 2, NOTE_D4, 8, NOTE_F4, 8, NOTE_GS4, 8,
+    NOTE_A4, 2, NOTE_C4, 8, NOTE_C4, 8, NOTE_G4, 8, 
+    NOTE_F4, 8, NOTE_E4, 8, NOTE_G4, 8, NOTE_F4, 8, NOTE_F4, 8, NOTE_E4, 8, NOTE_E4, 8, NOTE_GS4, 8,
+    NOTE_A4, 2, 
+  };
+
+  // nokia ringtone 
+  int melody_nokia[] = {
+    NOTE_E5, 8, NOTE_D5, 8, NOTE_FS4, 4, NOTE_GS4, 4, 
+    NOTE_CS5, 8, NOTE_B4, 8, NOTE_D4, 4, NOTE_E4, 4, 
+    NOTE_B4, 8, NOTE_A4, 8, NOTE_CS4, 4, NOTE_E4, 4,
+    NOTE_A4, 2, 
+  };
+
+  // available melodies
+  int *pmelodies[]=
+  {
+    melody_star_wars,
+    melody_darth_vader,
+    melody_tetris,
+    melody_mario,
+    melody_game_of_thrones,
+    melody_godfather,
+    melody_nokia
+  };
+
+  // change this to make the song slower or faster
+  int tempo[] = 
+  {
+    108, 
+    120, 
+    144, 
+    200,
+    85,
+    80,
+    180
+  };
+
+  int notes[] = 
+  {
+    sizeof(melody_star_wars) / sizeof(melody_star_wars[0]) / 2,
+    sizeof(melody_darth_vader) / sizeof(melody_darth_vader[0]) / 2,
+    sizeof(melody_tetris) / sizeof(melody_tetris[0]) / 2,
+    sizeof(melody_mario) / sizeof(melody_mario[0]) / 2,
+    sizeof(melody_game_of_thrones) / sizeof(melody_game_of_thrones[0]) / 2,
+    sizeof(melody_godfather) / sizeof(melody_godfather[0]) / 2,
+    sizeof(melody_nokia) / sizeof(melody_nokia[0]) / 2
+  };
+
 #endif
 
 
@@ -387,7 +544,8 @@ void connectWiFi();
 void connectMQTT();
 void onMessage(char* topic, byte* payload, unsigned int length);
 void updateStates();
-void playTune();
+void alarm();
+void playTune(unsigned int song);
 void setRelay(const unsigned int& relayPin, bool state);
 void loadConfig();
 void saveConfig();
@@ -485,24 +643,94 @@ void loop() {
     _lastAvailabilityTime = millis();
   }
 
+  bool sumpOn = true;
   if (_sensorEnabled) {    
     // checks sump tank water level
-    bool lowWaterLevel = analogRead(WATER_LOW_LEVEL_SENSOR_PIN) == 0;
+    bool lowWaterLevel = analogRead(WATER_LOW_LEVEL_SENSOR_PIN) == 0;    
     
-    // stops sump pump if the water level is low (protects the sump pump)  
-    setRelay(RELAY_SUMP_PUMP_PIN, !lowWaterLevel);
-    
-    // refills the sump tank with fresh water (if enabled)
-    #if (ENABLE_WATER_REPOSITION == true)
-      setRelay(RELAY_WATER_REPOSITION_PUMP_PIN, lowWaterLevel);
-    #endif
-    
-    // update states (mqtt)
-    if (lowWaterLevel != _lowWaterLevel) {
-      _lowWaterLevel = lowWaterLevel;
-      updateStates();
+    //
+    // state machine (finite automata):
+    //  water level ok        wait some    low water level       wait some 
+    //       (0) -[water low]-> (1) -----------> (2) -[water ok]-> (3)
+    //         <---------------------------------------------------- 
+    //    
+    switch (_state) {
+      case 0x00:
+        // state: water level ok (sump on)
+        sumpOn = true;
+        if (lowWaterLevel){
+          // got to waiting state
+          _state = 0x01;
+          _counter = 0;
+        }
+        break;
+      case 0x01:
+        // state: waiting to confirm low water level!
+        sumpOn = true;
+        if (!lowWaterLevel)
+          // false alarm
+          _state = 0x00;
+        _counter++;
+        if (_counter > WATER_SENSOR_LOW_COUNTER) {
+          // confirmed: go to low water level!
+          _state = 0x02;
+        }        
+        break;
+      case 0x02:
+        // state: low water level (sump off)
+        sumpOn = false;
+        if (!lowWaterLevel){
+          // got to waiting state
+          _state = 0x03;
+          _counter = 0;
+        }
+        break;
+      case 0x03:
+        // state: waiting to confirm water level is ok again!
+        sumpOn = false;
+        if (lowWaterLevel)
+          // false alarm
+          _state = 0x02;
+        _counter++;
+        if (_counter > WATER_SENSOR_HIGH_COUNTER) {
+          // confirmed: go to water level ok!
+          _state = 0x00;
+        }        
+        break;
     }
   }
+  else
+  {
+    // default
+    _state = 0x00;
+  }
+
+  // stops sump pump if the water level is low (protects the sump pump)  
+  setRelay(RELAY_SUMP_PUMP_PIN, sumpOn);
+  
+  // refills the sump tank with fresh water (if enabled)
+  #if (ENABLE_WATER_REPOSITION == true)
+    if (_repoEnabled) {
+      // water reposition pump is turn on on low water level (confirmed)
+      setRelay(RELAY_WATER_REPOSITION_PUMP_PIN, !sumpOn);
+    } else {
+      // disable water reposition pump and play an alarm
+      setRelay(RELAY_WATER_REPOSITION_PUMP_PIN, false);
+      alarm();
+    }
+  #else
+    // disable water reposition pump and play an alarm
+    setRelay(RELAY_WATER_REPOSITION_PUMP_PIN, false);
+    alarm();
+  #endif
+  
+  // update states (mqtt), if required 
+  // ("_lowWaterLevel" flag is expected to have value "!sumpOn")
+  if (_lowWaterLevel == sumpOn) {
+      _lowWaterLevel = !sumpOn;
+      updateStates();
+  }
+  
 
   MQTT.loop();
 
@@ -550,11 +778,14 @@ void onFeedPushButton() {
   //
   if ((millis() - _lastButtonPress) > BUTTON_SINGLE_PUSH_TIME) {
     _lastButtonPress = millis();
-    // simulates button press
+
+    // simulates a push button press
     setRelay(RELAY_FEEDER_PIN, true);
     delay(BUTTON_SINGLE_PUSH_TIME);
-    setRelay(RELAY_FEEDER_PIN, false);
+    setRelay(RELAY_FEEDER_PIN, false);    
+
     updateStates();
+    playTune(0);
   }
 }
 
@@ -581,58 +812,130 @@ void onMessage(char* topic, byte* payload, unsigned int length) {
   if (strcmp(msg, MQTT_COMMAND_FEED) == 0) {
     // feed the fishes
     onFeedPushButton();
+
   } else if (strcmp(msg, MQTT_COMMAND_LIGHT_ON) == 0) {
     // turn on the light (relay #2)
     setRelay(RELAY_LIGHT_PIN, true);
     updateStates();
+
   } else if (strcmp(msg, MQTT_COMMAND_LIGHT_OFF) == 0) {
     // turn off the light (relay #2)
     setRelay(RELAY_LIGHT_PIN, false);
     updateStates();
+
   } else if (strcmp(msg, MQTT_COMMAND_SUMP_PUMP_ON) == 0) {
     // enables sump pump
     _sumpEnabled = true;
     saveConfig();
     updateStates();
+
   } else if (strcmp(msg, MQTT_COMMAND_SUMP_PUMP_OFF) == 0) {
     // disables sump pump
     _sumpEnabled = false;
     saveConfig();
     updateStates();
+
   } else if (strcmp(msg, MQTT_COMMAND_REPO_PUMP_ON) == 0) {
     // enables repo pump
     _repoEnabled = true;
     saveConfig();
     updateStates();
+
   } else if (strcmp(msg, MQTT_COMMAND_REPO_PUMP_OFF) == 0) {
     // disables repo pump
     _repoEnabled = false;
     saveConfig();
     updateStates();
+
+  } else if (strcmp(msg, MQTT_COMMAND_DEBUG_BEEP) == 0) {
+    // plays a "beep" sound
+    beep(3, 100);
+  
   } else if (strcmp(msg, MQTT_COMMAND_DEBUG_PLAY) == 0) {
-    // playd the music
-    playTune();
+    // plays random tune
+    int song = random(0, 6);
+    playTune(song);
+
+  } else if (strcmp(msg, MQTT_COMMAND_DEBUG_PLAY_NOTICE) == 0) {
+    // plays random tune
+    int notice = random(1, 5);
+    playTune(notice);
+
+  } else if (strcmp(msg, MQTT_COMMAND_DEBUG_PLAY_STAR_WARS) == 0) {
+    // playd the star wars theme
+    playTune(0);
+
+  } else if (strcmp(msg, MQTT_COMMAND_DEBUG_PLAY_DARTH_VADER) == 0) {
+    // playd the darth vader theme
+    playTune(1);
+
+  } else if (strcmp(msg, MQTT_COMMAND_DEBUG_PLAY_TETRIS) == 0) {
+    // plays the tetris theme
+    playTune(2);
+
+  } else if (strcmp(msg, MQTT_COMMAND_DEBUG_PLAY_MARIO) == 0) {
+    // plays the super mario bros theme
+    playTune(3);
+
+  } else if (strcmp(msg, MQTT_COMMAND_DEBUG_PLAY_GOT) == 0) {
+    // plays the super mario bros theme
+    playTune(4);
+
+  } else if (strcmp(msg, MQTT_COMMAND_DEBUG_PLAY_GODFATHER) == 0) {
+    // plays the super mario bros theme
+    playTune(5);    
+
+  } else if (strcmp(msg, MQTT_COMMAND_DEBUG_PLAY_NOKIA) == 0) {
+    // plays the super mario bros theme
+    playTune(6);
+
   } else if (strcmp(msg, MQTT_COMMAND_DEBUG_REFRESH) == 0) {
     // updated mqtt states (debug)
     updateStates();
+
   } else if (strcmp(msg, MQTT_COMMAND_DEBUG_SENSOR_ON) == 0) {
+    // enables water level sensor
     _sensorEnabled = true;
     updateStates();
+
   } else if (strcmp(msg, MQTT_COMMAND_DEBUG_SENSOR_OFF) == 0) {
+    // disables water level sensor
     _sensorEnabled = false;
     updateStates();
+
   } else if (strcmp(msg, MQTT_COMMAND_DEBUG_RELAYS_ON) == 0) {
     // turns on all relays (debug), and set sensor off (keeps relays on)
     _sensorEnabled = false;
     for(unsigned int i = 0; i < RELAY_SIZE; i++)     
       setRelay(RELAY_PINS[i], true);
     updateStates();
+
   } else if (strcmp(msg, MQTT_COMMAND_DEBUG_RELAYS_OFF) == 0) {
     // turs off all relays (debug), and set sensor off (keeps relays off)
     _sensorEnabled = false;
     for(unsigned int i = 0; i < RELAY_SIZE; i++)     
       setRelay(RELAY_PINS[i], false);  
     updateStates();
+
+  } else if (strcmp(msg, MQTT_COMMAND_DEBUG_LOW_LEVEL_ALARM_ON) == 0) {
+    // enables low water level alarm
+    _alarmEnabled = true;
+    saveConfig();
+    updateStates();
+
+  } else if (strcmp(msg, MQTT_COMMAND_DEBUG_LOW_LEVEL_ALARM_OFF) == 0) {
+    // disables low water level alarm
+    _alarmEnabled = false;
+    saveConfig();
+    updateStates();       
+  
+  } else if (strcmp(msg, MQTT_COMMAND_DEBUG_EMERGENCY_ALARM_ON) == 0) {
+    // play loud sound (non stop)
+    digitalWrite(BUZZER_PIN, HIGH);   
+
+  } else if (strcmp(msg, MQTT_COMMAND_DEBUG_EMERGENCY_ALARM_OFF) == 0) {
+    // turn buzzer off
+    digitalWrite(BUZZER_PIN, LOW);    
   }
 }
 
@@ -649,7 +952,8 @@ void updateStates() {
     json += toStr("repo", _repoOn, false);
     json += toStr("sump_enabled", _sumpEnabled, false);
     json += toStr("repo_enabled", _repoEnabled, false);
-    json += toStr("sensor", _sensorEnabled, false);
+    json += toStr("alarm", _alarmEnabled, false);
+    json += toStr("sensor", _sensorEnabled, false);    
     json += toStr("water_low", _lowWaterLevel, true);
 
     unsigned int n = json.length() + 1;
@@ -714,7 +1018,7 @@ void connectWiFi() {
   // retry until connection
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
-    beep(1, 100);
+    beep(2, 100);
     #if (DEBUG_MODE == true)
         Serial.print(F("."));
     #endif
@@ -741,28 +1045,43 @@ void setRelay(const unsigned int& relayPin, bool state) {
   //
   delay(50);
 
+  // handles relays with special behaviour
   switch (relayPin) {
-
-    case RELAY_LIGHT_PIN:
-      // lightening relay
+    //
+    // lights relay
+    //
+    case RELAY_LIGHT_PIN:      
       if (_lightOn == state)
+        // current state: do nothing!
         return;
+        // set state
       _lightOn = state;
       break;
-
-    case RELAY_SUMP_PUMP_PIN:
+    //
+    // sump pump relay
+    //
+    case RELAY_SUMP_PUMP_PIN:      
       if (!_sumpEnabled)
-        state = false;
+        // turns off sump pump, if disabled      
+        state = false;      
       if (_sumpOn == state)
+        // current state: do nothing!
         return;
+      // set state
       _sumpOn = state;
       break;
-
+    //
+    // water reposition pump relay
+    //
     case RELAY_WATER_REPOSITION_PUMP_PIN:
-      if (!_repoEnabled)
+      if (!_repoEnabled) {
+        // turns off sump pump, if disabled      
         state = false;
+      }      
       if (_repoOn == state)
+        // current state: do nothing!
         return;
+      // set state
       _repoOn = state;
       break;
   }
@@ -775,7 +1094,7 @@ void setRelay(const unsigned int& relayPin, bool state) {
 
 void beep(const uint8_t& n = 1, const unsigned long& time = BUZZER_POWER_ON_TIME) {
   //
-  // plays beep sound
+  // plays a beep sound
   //
   // parameters:
   //     n       number of beeps
@@ -791,19 +1110,42 @@ void beep(const uint8_t& n = 1, const unsigned long& time = BUZZER_POWER_ON_TIME
   }
 }
 
-void playTune() {
+void alarm() {
+  //
+  // alarm sound (i.e. low water level alarm)
+  //
+  if (_alarmEnabled && (millis() - _lastLowWaterLevelWarningTime) > 5000) {
+    _lastLowWaterLevelWarningTime = millis();
+    beep(5, 100);  
+  }
+}
+
+void playTune(unsigned int song = 0) {
 //
 // Plays the Dart Vader theme (Imperial March) on buzzer
 //
   #if (PLAY_TUNE == false)
-    beep(200, 3);
+    // simple beep
+    beep(200, 4);
+    delay(1000);
   #else
+    //
+    // plays some music!
+    //  
+    
+    // sizeof gives the number of bytes, each int value is composed of two bytes (16 bits)
+    // there are two values per note (pitch and duration), so for each note there are four bytes
+
+    // this calculates the duration of a whole note in ms
+    const int wholenote = (60000 * 4) / tempo[song];
+    int divider = 0, noteDuration = 0;
+       
     // iterate over the notes of the melody.
     // Remember, the array is twice the number of notes (notes + durations)
-    for (int thisNote = 0; thisNote < notes * 2; thisNote = thisNote + 2) {
+    for (int currentNote = 0; currentNote < notes[song] * 2; currentNote = currentNote + 2) {
+      
+      divider = pmelodies[song][currentNote + 1];
 
-      // calculates the duration of each note
-      divider = melody[thisNote + 1];
       if (divider > 0) {
         // regular note, just proceed
         noteDuration = (wholenote) / divider;
@@ -815,8 +1157,8 @@ void playTune() {
 
       // we only play the note for 90% of the duration, leaving 10% as a pause
       digitalWrite(BUZZER_PIN, HIGH);
-      tone(buzzer, melody[thisNote], noteDuration * 0.9);
-      
+      tone(buzzer, pmelodies[song][currentNote], noteDuration * 0.9);
+            
       // Wait for the specief duration before playing the next note.
       delay(noteDuration);
 
@@ -834,13 +1176,17 @@ void loadConfig() {
   // loads configurations from EEPROM
   //
   byte states = EEPROM.read(EEPROM_ADDRESS);
-  bool crc = (bitRead(states, 0) == 1);
+  // "crc": expected 101
+  bool crc = (bitRead(states, 0) == 1 && bitRead(states, 1) == 0 && bitRead(states, 2) == 1);
   if (crc) {
-    _sumpEnabled = (bitRead(states, 1) == 1);
-    _repoEnabled = (bitRead(states, 2) == 1);
+    _sumpEnabled = (bitRead(states, 3) == 1);
+    _repoEnabled = (bitRead(states, 4) == 1);
+    _alarmEnabled = (bitRead(states, 5) == 1);
   } else {
+    // previous data not found: set default values
     _sumpEnabled = true;
     _repoEnabled = true;
+    _alarmEnabled = true;
     saveConfig();
     delay(50);
   }
@@ -849,6 +1195,7 @@ void loadConfig() {
     Serial.println(F(" - configuration loaded: "));
     Serial.println(toStr("sump", _sumpEnabled, false));
     Serial.println(toStr("repo", _repoEnabled, false));
+    Serial.println(toStr("alarm", _alarmEnabled, false));
   #endif
 }
 
@@ -857,20 +1204,26 @@ void saveConfig() {
   // saves configurations to EEPROM
   //
   byte states = 0x00;
-  // "crc"
+  // "crc": expected 101
   bitSet(states, 0);
+  bitSet(states, 2);
   // enables sump pump automation
   if (_sumpEnabled)
-    bitSet(states, 1);
+    bitSet(states, 3);
   // enables repo pump automation
   if (_repoEnabled)
-    bitSet(states, 2);
+    bitSet(states, 4);
+  if (_alarmEnabled)
+    bitSet(states, 5);
 
-  EEPROM.write(EEPROM_ADDRESS, states);  
+  // emulates EEPROM.update() 
+  byte previous_states = EEPROM.read(EEPROM_ADDRESS);
+  if (previous_states != states)
+    EEPROM.write(EEPROM_ADDRESS, states);  
 
   #if (DEBUG_MODE == true)
     Serial.print(F(" - configuration saved: "));
-    Serial.println(states, DEC);
+    Serial.println(states, BIN);
   #endif
 }
 
