@@ -148,17 +148,19 @@
 //  sets the macro "DEBUG_MODE" as true in order to debug on serial monitor (testing only) - ensure the baud rate setup!
 //
 // Configuration flags:
-//   - WIFI_SSID: Wi-fi SSID
-//   - WIFI_PASSWORD: Wi-fi password
-//   - MQTT_BROKER_ADDRESS MQTT: broker server ip address
-//   - MQTT_BROKER_PORT: MQTT broker port (default: 1883)
-//   - MQTT_USERNAME: mqtt broker username
-//   - MQTT_PASSWORD: mqtt broker password
+//   - WIFI_SSID: Wi-fi SSID (required)
+//   - WIFI_PASSWORD: Wi-fi password (required)
+//   - MQTT_BROKER_ADDRESS MQTT: broker server ip address (required)
+//   - MQTT_BROKER_PORT: MQTT broker port (required) (default: 1883)
+//   - MQTT_USERNAME: mqtt broker username (required)
+//   - MQTT_PASSWORD: mqtt broker password (required)
 //   - MQTT_DEVICE_ID: MQTT session identifier (changes for more then one gardeino on the same MQTT broker)
 //   - ENABLE_WATER_REPOSITION: enables/disables water level sensors (disable it to not use the water level sensors)
+//   - WATER_SENSOR_LOW_LEVEL_TIME: waiting time ensures "low water level": avoids false positives, in miliseconds (default: 1s)
+//   - WATER_SENSOR_HIGH_LEVEL_TIME: waiting time to ensure some margin to the "water refill", in miliseconds (default: 20 s)
 //   - DEBUG_MODE: enables/disables serial monitor debugging messages
 //   - WIRING_TEST_MODE: enables/disables a wiring test mode
-//   - PLAY_TUNE: enables play music theme
+//   - PLAY_TUNES: enables play music themes
 //
 //  MQTT topics:
 //    - bettaino/available: sensors availability ["online"/"offline"]
@@ -193,47 +195,47 @@
 #define DEBUG_MODE false                            // enables/disables serial debugging messages
 #define WIRING_TEST_MODE false                      // enables/disables testing mode
 #define ENABLE_WATER_REPOSITION true                // true for enable water reposition (reposition pump), false otherwise
-#define USE_INTERRUPTIONS false                     // use interruptions on push buttons
-#define PLAY_TUNE true                              // enables play music
+#define PLAY_TUNES true                              // enables play music
 //------------------------------------------------------------------------------------------------------------------
 //
 // Configuration flags (enables or disables features in order to "skip" unwanted hardware)
 //
 //------------------------------------------------------------------------------------------------------------------
 // Wi-fi setup
-#define WIFI_SSID "jorge cps"                       // Wi-fi SSID
-#define WIFI_PASSWORD "casa1976bonita1980"          // Wi-fi password
+#define WIFI_SSID "wifi-ssid"                         // Wi-fi SSID (required)
+#define WIFI_PASSWORD "wifi-password"                 // Wi-fi password (required)
 // MQTT setup
-#define MQTT_BROKER_ADDRESS "192.168.68.10"         // MQTT broker server IP
-#define MQTT_BROKER_PORT 1883                       // MQTT broker port
-#define MQTT_USERNAME "mqtt-user"                   // can be omitted if not needed
-#define MQTT_PASSWORD "mqtt"                        // can be omitted if not needed
+#define MQTT_BROKER_ADDRESS "192.168.68.10"           // MQTT broker server IP (required)
+#define MQTT_BROKER_PORT 1883                         // MQTT broker port (required)
+#define MQTT_USERNAME "mqtt-user"                     // MQTT broker username (required)
+#define MQTT_PASSWORD "mqtt-password"                 // MQTT broker password (required) 
 // MQTT topics
 #define MQTT_COMMAND_TOPIC "bettaino/cmd"             // MQTT topic for send door commands (e.g., open from door)
 #define MQTT_STATUS_TOPIC "bettaino/status"           // MQTT topic for doorbell status
 #define MQTT_AVAILABILITY_TOPIC "bettaino/available"  // MQTT topic for availability notification (home assistant "unavailable" state)
 #define MQTT_DEVICE_ID "bettaino_12fmo43iowerwe2"     // MQTT session identifier
 // others
-#define MQTT_STATUS_UPDATE_TIME 120000               // time for send and status update (default: 2 min)
-#define MQTT_AVAILABILITY_TIME 60000                 // elapsed time to send MQTT availability, in miliseconds (default: 1 min)
-#define BUTTON_SINGLE_PUSH_TIME 300                  // time to avoid double push button press (better usability)
-#define BUZZER_POWER_ON_TIME 800                     // default buzzen power on time (beep)
-#define WATER_SENSOR_LOW_COUNTER 15                   // counter for smooth transition to "low water state": avoids false positives
-#define WATER_SENSOR_HIGH_COUNTER 25                  // counter for smooth transition to "water state refiled": avoids false negatives
-#define SERIAL_BAUDRATE 9600                         // serial monitor baud rate (only for debuging)
-#define EEPROM_ADDRESS 0
-#define RELAY_SIZE 4
+#define MQTT_STATUS_UPDATE_TIME 300000                // maximum time to send the MQTT state update, in miliseconds (default: 5 min)
+#define MQTT_AVAILABILITY_TIME 60000                  // elapsed time to send MQTT availability, in miliseconds (default: 1 min)
+#define BUTTON_SINGLE_PUSH_TIME 300                   // time to avoid double push button press, in miliseconds (better usability)
+#define BUZZER_POWER_ON_TIME 800                      // default buzzen power on time, in miliseconds (beep)
+#define WATER_SENSOR_LOW_LEVEL_TIME 1000              // waiting time ensures "low water level": avoids false positives, in miliseconds (default: 1s)
+#define WATER_SENSOR_HIGH_LEVEL_TIME 20000            // waiting time  to ensure some margin to the "water refill", in miliseconds (default: 20 s)
+#define LOOP_TIME 200                                 // processor loop timer, in miliseconds
+#define SERIAL_BAUDRATE 9600                          // serial monitor baud rate (only for debuging)
+#define EEPROM_ADDRESS 0                              // eeprom address
+#define RELAY_SIZE 4                                  // relay module number of channels 
 //
 // pins definitions (ModeMCU)
 //
-#define WATER_LOW_LEVEL_SENSOR_PIN A0                // A0: water level sensor (should be located at desired aquarium level: open when water is low)
-#define PUSH_BUTTON_FEEDING_PIN D1                   // D1: pull-up (high) - tactile push button "feed"
-#define PUSH_BUTTON_LIGHT_PIN D2                     // D2: pull-up (high) - tactile push button "lights"
-#define BUZZER_PIN D3                                // D3: pull-up (high) (remark: boot fails on low) - buzzer
-#define RELAY_FEEDER_PIN D4                          // D4: pull-up (high) - relay #1: feeder push button [connected to build-in LED]
-#define RELAY_LIGHT_PIN D5                           // D5: pull-up (high) - relay #2: light (normally open)
-#define RELAY_SUMP_PUMP_PIN D6                       // D6: pull-up (high) - relay #3: sump pump (normally open, common on 110vac)
-#define RELAY_WATER_REPOSITION_PUMP_PIN D7           // D7: pull-up (high) - relay #4: water reposition pump (normally open, common on 110vac)
+#define WATER_LOW_LEVEL_SENSOR_PIN A0                 // A0: water level sensor (should be located at desired aquarium level: open when water is low)
+#define PUSH_BUTTON_FEEDING_PIN D1                    // D1: pull-up (high) - tactile push button "feed"
+#define PUSH_BUTTON_LIGHT_PIN D2                      // D2: pull-up (high) - tactile push button "lights"
+#define BUZZER_PIN D3                                 // D3: pull-up (high) (remark: boot fails on low) - buzzer
+#define RELAY_FEEDER_PIN D4                           // D4: pull-up (high) - relay #1: feeder push button [connected to build-in LED]
+#define RELAY_LIGHT_PIN D5                            // D5: pull-up (high) - relay #2: light (normally open)
+#define RELAY_SUMP_PUMP_PIN D6                        // D6: pull-up (high) - relay #3: sump pump (normally open, common on 110vac)
+#define RELAY_WATER_REPOSITION_PUMP_PIN D7            // D7: pull-up (high) - relay #4: water reposition pump (normally open, common on 110vac)
 //
 // protocol commands
 //
@@ -292,16 +294,12 @@ unsigned int _counter;
 unsigned long _lastAvailabilityTime = 0;
 unsigned long _lastStatusUpdateTime = 0;
 unsigned long _lastLowWaterLevelWarningTime = 0;
-unsigned long _lastButtonPress = 0;
-
-
+// relays pins cache
 byte RELAY_PINS[] = {RELAY_FEEDER_PIN, RELAY_LIGHT_PIN, RELAY_SUMP_PUMP_PIN, RELAY_WATER_REPOSITION_PUMP_PIN};
 
-#if (PLAY_TUNE == true)
+#if (PLAY_TUNES == true)
   /* ----------------------------------------------------------------------
-    Star Wars theme  
-    Connect a piezo buzzer or speaker to pin 11 or select a new pin.
-    More songs available at https://github.com/robsoncouto/arduino-songs                                                                                          
+    Songs available at https://github.com/robsoncouto/arduino-songs                                                                                          
                                                 Robson Couto, 2019
     ----------------------------------------------------------------------*/
   #define NOTE_B0 31
@@ -544,6 +542,8 @@ void connectWiFi();
 void connectMQTT();
 void onMessage(char* topic, byte* payload, unsigned int length);
 void updateStates();
+ICACHE_RAM_ATTR void onFeedPushButton();
+ICACHE_RAM_ATTR void onLightPushButton();
 void alarm();
 void playTune(unsigned int song);
 void setRelay(const unsigned int& relayPin, bool state);
@@ -551,7 +551,8 @@ void loadConfig();
 void saveConfig();
 void beep(const uint8_t& n, const unsigned long& time);
 void wiringTest();
-String toStr(const char* label, const bool& state, const bool& end);
+String toStr(const char* label, int value);
+String toStr(const char* label, const bool& state);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -562,9 +563,9 @@ String toStr(const char* label, const bool& state, const bool& end);
 
 
 void setup() {
-//
-// initialization
-//
+  //
+  // initialization
+  //
   #if (DEBUG_MODE == true)
     Serial.begin(SERIAL_BAUDRATE);
     Serial.println(F(" "));
@@ -576,7 +577,7 @@ void setup() {
     pinMode(RELAY_PINS[i], OUTPUT);
     // relays off (security)
     digitalWrite(RELAY_PINS[i], HIGH);
-  }  
+  }
 
   // buzzer
   pinMode(BUZZER_PIN, OUTPUT);
@@ -584,11 +585,9 @@ void setup() {
   // push buttons
   pinMode(PUSH_BUTTON_FEEDING_PIN, INPUT_PULLUP);
   pinMode(PUSH_BUTTON_LIGHT_PIN, INPUT_PULLUP);
-  #if (USE_INTERRUPTIONS == true)
-    attachInterrupt(digitalPinToInterrupt(PUSH_BUTTON_FEEDING_PIN), onFeedPushButton, FALLING);
-    attachInterrupt(digitalPinToInterrupt(PUSH_BUTTON_LIGHT_PIN), onLightPushButton, FALLING);
-  #endif
-
+  attachInterrupt(digitalPinToInterrupt(PUSH_BUTTON_FEEDING_PIN), onFeedPushButton, FALLING);
+  attachInterrupt(digitalPinToInterrupt(PUSH_BUTTON_LIGHT_PIN), onLightPushButton, FALLING);
+  
   // starting beep
   beep(1, 100);
 
@@ -649,7 +648,8 @@ void loop() {
     bool lowWaterLevel = analogRead(WATER_LOW_LEVEL_SENSOR_PIN) == 0;    
     
     //
-    // state machine (finite automata):
+    // water level state machine (finite automata): avoids false positive/negatives
+    //
     //  water level ok        wait some    low water level       wait some 
     //       (0) -[water low]-> (1) -----------> (2) -[water ok]-> (3)
     //         <---------------------------------------------------- 
@@ -671,7 +671,7 @@ void loop() {
           // false alarm
           _state = 0x00;
         _counter++;
-        if (_counter > WATER_SENSOR_LOW_COUNTER) {
+        if (_counter * LOOP_TIME > WATER_SENSOR_LOW_LEVEL_TIME) {
           // confirmed: go to low water level!
           _state = 0x02;
         }        
@@ -692,7 +692,7 @@ void loop() {
           // false alarm
           _state = 0x02;
         _counter++;
-        if (_counter > WATER_SENSOR_HIGH_COUNTER) {
+        if (_counter * LOOP_TIME > WATER_SENSOR_HIGH_LEVEL_TIME) {
           // confirmed: go to water level ok!
           _state = 0x00;
         }        
@@ -731,16 +731,9 @@ void loop() {
       updateStates();
   }
   
-
+  // MQTT loop
   MQTT.loop();
-
-  #if (USE_INTERRUPTIONS == false)
-    if (digitalRead(PUSH_BUTTON_LIGHT_PIN) == LOW)
-      onLightPushButton();
-    else if (digitalRead(PUSH_BUTTON_FEEDING_PIN) == LOW)
-      onFeedPushButton();
-  #endif
-
+  
   if ((millis() - _lastStatusUpdateTime) > MQTT_STATUS_UPDATE_TIME) {
     // status update (with max timespan for 5 minutes)
     updateStates();    
@@ -749,7 +742,7 @@ void loop() {
   // keeps wifi connected
   connectWiFi();
 
-  delay(200);
+  delay(LOOP_TIME);
 }
 
 
@@ -764,29 +757,25 @@ void onLightPushButton() {
   //
   // lightening button handler: invertd light state
   //
-  if ((millis() - _lastButtonPress) > BUTTON_SINGLE_PUSH_TIME) {    
-    _lastButtonPress = millis();
-    // inverts light state (on/off)
-    setRelay(RELAY_LIGHT_PIN, !_lightOn);    
-    updateStates();
-  }
+  
+  // inverts light state (on/off)
+  setRelay(RELAY_LIGHT_PIN, !_lightOn);    
+  updateStates();
+  
 }
 
 void onFeedPushButton() {
   //
   // feeding button handler: feed!
   //
-  if ((millis() - _lastButtonPress) > BUTTON_SINGLE_PUSH_TIME) {
-    _lastButtonPress = millis();
+  
+  // simulates a push button press (pulsed)
+  setRelay(RELAY_FEEDER_PIN, true);
+  delay(BUTTON_SINGLE_PUSH_TIME);
+  setRelay(RELAY_FEEDER_PIN, false);    
 
-    // simulates a push button press
-    setRelay(RELAY_FEEDER_PIN, true);
-    delay(BUTTON_SINGLE_PUSH_TIME);
-    setRelay(RELAY_FEEDER_PIN, false);    
-
-    updateStates();
-    playTune(0);
-  }
+  updateStates();
+  playTune(0);  
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -944,17 +933,26 @@ void updateStates() {
   //
   // MQTT publish states update
   //
-  if (MQTT.connected()) {
+  if (MQTT.connected()) {    
+    byte mac[6];
+    WiFi.macAddress(mac);
 
     String json = String(F("{"));
-    json += toStr("light", _lightOn, false);
-    json += toStr("sump", _sumpOn, false);
-    json += toStr("repo", _repoOn, false);
-    json += toStr("sump_enabled", _sumpEnabled, false);
-    json += toStr("repo_enabled", _repoEnabled, false);
-    json += toStr("alarm", _alarmEnabled, false);
-    json += toStr("sensor", _sensorEnabled, false);    
-    json += toStr("water_low", _lowWaterLevel, true);
+    json += toStr("light", _lightOn);
+    json += toStr("sump", _sumpOn);
+    json += toStr("repo", _repoOn);
+    json += toStr("sump_en", _sumpEnabled);
+    json += toStr("repo_en", _repoEnabled);
+    json += toStr("alarm", _alarmEnabled);
+    json += toStr("sensor", _sensorEnabled);
+    json += toStr("water_low", _lowWaterLevel);
+    json += toStr("rssi", WiFi.RSSI());
+    json += String(F("\"ip\": ")) +  WiFi.localIP().toString() + String(F(","));        
+    json += String(F("\"mac\": \""));
+    for (int i = 5; i >= 0; i--) {
+      json += String(mac[i], HEX);
+      json += (i == 0) ? String(F("\"}")) : json += String(F(":"));        
+    }    
 
     unsigned int n = json.length() + 1;
     char message[n];
@@ -1025,11 +1023,31 @@ void connectWiFi() {
   }
 
   #if (DEBUG_MODE == true)
+    byte mac[6];
+    WiFi.macAddress(mac);
+
     Serial.println();
     Serial.print(F("WiFi connected: "));
     Serial.println(WIFI_SSID);
+
     Serial.print(F(" - IP address: "));
     Serial.println(WiFi.localIP());
+
+    Serial.print(F(" - MAC: "));
+    Serial.print(mac[5], HEX);
+    Serial.print(":");
+    Serial.print(mac[4], HEX);
+    Serial.print(":");
+    Serial.print(mac[3], HEX);
+    Serial.print(":");
+    Serial.print(mac[2], HEX);
+    Serial.print(":");
+    Serial.print(mac[1], HEX);
+    Serial.print(":");
+    Serial.println(mac[0], HEX);
+    
+    Serial.print(F(" - RSSI [db]: "));
+    Serial.println(WiFi.RSSI());    
   #endif
 }
 
@@ -1124,7 +1142,7 @@ void playTune(unsigned int song = 0) {
 //
 // Plays the Dart Vader theme (Imperial March) on buzzer
 //
-  #if (PLAY_TUNE == false)
+  #if (PLAY_TUNES == false)
     // simple beep
     beep(200, 4);
     delay(1000);
@@ -1319,12 +1337,23 @@ void wiringTest() {
 
 //--------------------------------------------------------------------------------------------------
 
-String toStr(const char* label, const bool& state, const bool& end = false) {
+String toStr(const char* label, int value) {
+  //
+  // writes a string line with the format:
+  //     "label": 1.000000,
+  //  
+  String text = String(F("\"[LABEL]\": \"[VALUE]\", "));
+  text.replace(F("[LABEL]"), label);
+  text.replace(F("[VALUE]"), String(value, DEC));
+  return text;
+}
+
+String toStr(const char* label, const bool& state) {
   //
   // writes a string line with the format:
   //     "label": "on/off",
   //
-  String text = end ? String(F("\"[LABEL]\": \"[VALUE]\" }")) : String(F("\"[LABEL]\": \"[VALUE]\", "));
+  String text = String(F("\"[LABEL]\": \"[VALUE]\", "));
   text.replace(F("[LABEL]"), label);
   text.replace(F("[VALUE]"), (state ? F("on") : F("off")));
   return text;
