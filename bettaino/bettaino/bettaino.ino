@@ -185,7 +185,9 @@
 //            "repo_enabled": "off",  // water reposition pump automation routine enabled: [on/off]
 //            "alarm": "on",          // play a alarm sound on low water level: [on/off]
 //            "sensor": "on",         // water level sensor enabled to block the sump pump: [on/off]
-//            "water_low": "off"      // low water level: [on/off]
+//            "water_low": "off",     // low water level: [on/off]
+//            "rssi": -68,            // wifi signal power 
+//            "ip": "192.168.0.58"    // ip address
 //         } 
 //------------------------------------------------------------------------------------------------------------------
 //
@@ -272,6 +274,7 @@
 // librarys (see doc above)
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
+#include <ArduinoJson.h>
 #include <EEPROM.h>
 
 WiFiClient espClient;
@@ -551,9 +554,7 @@ void loadConfig();
 void saveConfig();
 void beep(const uint8_t& n, const unsigned long& time);
 void wiringTest();
-String toStr(const char* label, int value);
-String toStr(const char* label, const bool& state);
-
+String toStr(const bool& value);
 
 //--------------------------------------------------------------------------------------------------
 //
@@ -934,39 +935,35 @@ void updateStates() {
   // MQTT publish states update
   //
   if (MQTT.connected()) {    
-    byte mac[6];
-    WiFi.macAddress(mac);
 
-    String json = String(F("{"));
-    json += toStr("light", _lightOn);
-    json += toStr("sump", _sumpOn);
-    json += toStr("repo", _repoOn);
-    json += toStr("sump_en", _sumpEnabled);
-    json += toStr("repo_en", _repoEnabled);
-    json += toStr("alarm", _alarmEnabled);
-    json += toStr("sensor", _sensorEnabled);
-    json += toStr("water_low", _lowWaterLevel);
-    json += toStr("rssi", WiFi.RSSI());
-    json += String(F("\"ip\": ")) +  WiFi.localIP().toString() + String(F(","));        
-    json += String(F("\"mac\": \""));
-    for (int i = 5; i >= 0; i--) {
-      json += String(mac[i], HEX);
-      json += (i == 0) ? String(F("\"}")) : json += String(F(":"));        
-    }    
-
-    unsigned int n = json.length() + 1;
-    char message[n];
-    json.toCharArray(message, n);
+    StaticJsonDocument<300> json;
+    json["light"] = toStr(_lightOn);
+    json["sump"] = toStr(_sumpOn);
+    json["repo"] = toStr(_repoOn);
+    json["sump_en"] = toStr(_sumpEnabled);
+    json["repo_en"] = toStr(_repoEnabled);
+    json["alarm"] = toStr(_alarmEnabled);
+    json["sensor"] = toStr(_sensorEnabled);
+    json["water_low"] = toStr(_lowWaterLevel);
+    json["rssi"] = WiFi.RSSI();
+    json["ip"] = WiFi.localIP().toString();
+    
+    //unsigned int n = measureJson(json) + 1;
+    char message[300];
+    serializeJson(json, message);
 
     #if (DEBUG_MODE == true)
         Serial.print(F("mqtt update: "));
         Serial.println(message);
     #endif
+    yield();
 
     MQTT.publish(MQTT_STATUS_TOPIC, message);
+    yield();
 
     _lastStatusUpdateTime = millis();
   }
+  
 }
 
 void connectMQTT() {
@@ -1106,6 +1103,7 @@ void setRelay(const unsigned int& relayPin, bool state) {
 
   // relays are active LOW
   digitalWrite(relayPin, (state ? LOW : HIGH));
+  yield();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1134,7 +1132,7 @@ void alarm() {
   //
   if (_alarmEnabled && (millis() - _lastLowWaterLevelWarningTime) > 5000) {
     _lastLowWaterLevelWarningTime = millis();
-    beep(5, 100);  
+    beep(5, 100);      
   }
 }
 
@@ -1211,9 +1209,12 @@ void loadConfig() {
 
   #if (DEBUG_MODE == true)
     Serial.println(F(" - configuration loaded: "));
-    Serial.println(toStr("sump", _sumpEnabled, false));
-    Serial.println(toStr("repo", _repoEnabled, false));
-    Serial.println(toStr("alarm", _alarmEnabled, false));
+    Serial.print(F("   sump:"));
+    Serial.println(toStr(_sumpEnabled));
+    Serial.print(F("   repo:"));
+    Serial.println(toStr(_repoEnabled));     
+    Serial.print(F("   alarm:"));
+    Serial.println(toStr(_alarmEnabled));
   #endif
 }
 
@@ -1337,26 +1338,6 @@ void wiringTest() {
 
 //--------------------------------------------------------------------------------------------------
 
-String toStr(const char* label, int value) {
-  //
-  // writes a string line with the format:
-  //     "label": 1.000000,
-  //  
-  String text = String(F("\"[LABEL]\": \"[VALUE]\", "));
-  text.replace(F("[LABEL]"), label);
-  text.replace(F("[VALUE]"), String(value, DEC));
-  return text;
+String toStr(const bool& value) {
+  return String(value? F("on") : F("off"));
 }
-
-String toStr(const char* label, const bool& state) {
-  //
-  // writes a string line with the format:
-  //     "label": "on/off",
-  //
-  String text = String(F("\"[LABEL]\": \"[VALUE]\", "));
-  text.replace(F("[LABEL]"), label);
-  text.replace(F("[VALUE]"), (state ? F("on") : F("off")));
-  return text;
-}
-
-//--------------------------------------------------------------------------------------------------
