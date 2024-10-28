@@ -717,12 +717,14 @@ void loop() {
     } else {
       // disable water reposition pump and play an alarm
       setRelay(RELAY_WATER_REPOSITION_PUMP_PIN, false);
-      alarm();
+      if (_state == 0x02)
+        alarm();
     }
   #else
     // disable water reposition pump and play an alarm
     setRelay(RELAY_WATER_REPOSITION_PUMP_PIN, false);
-    alarm();
+    if (_state == 0x02)
+        alarm();
   #endif
   
   // update states (mqtt), if required 
