@@ -181,13 +181,14 @@
 //            "light": "on",          // relay #2 state (lights): [on/off]
 //            "sump": "on",           // relay #3 state (sump pump): [on/off]
 //            "repo": "off",          // relay #4 state (water reposition pump): [on/off]
-//            "sump_enabled": "on",   // sump pump automation routine enabled: [on/off]
-//            "repo_enabled": "off",  // water reposition pump automation routine enabled: [on/off]
+//            "sump_en": "on",   // sump pump automation routine enabled: [on/off]
+//            "repo_en": "off",  // water reposition pump automation routine enabled: [on/off]
 //            "alarm": "on",          // play a alarm sound on low water level: [on/off]
 //            "sensor": "on",         // water level sensor enabled to block the sump pump: [on/off]
 //            "water_low": "off",     // low water level: [on/off]
 //            "rssi": -68,            // wifi signal power 
-//            "ip": "192.168.0.58"    // ip address
+//            "ip": "192.168.0.58",   // ip address
+//            "st": 0                 // finite machine state  
 //         } 
 //------------------------------------------------------------------------------------------------------------------
 //
@@ -217,6 +218,9 @@
 #define MQTT_AVAILABILITY_TOPIC "bettaino/available"  // MQTT topic for availability notification (home assistant "unavailable" state)
 #define MQTT_DEVICE_ID "bettaino_12fmo43iowerwe2"     // MQTT session identifier
 // others
+#define KEEP_SILENCE_TIME true
+#define SILENCE_HOUR_START 20
+#define SILENCE_HOUR_END 8
 #define MQTT_STATUS_UPDATE_TIME 300000                // maximum time to send the MQTT state update, in miliseconds (default: 5 min)
 #define MQTT_AVAILABILITY_TIME 60000                  // elapsed time to send MQTT availability, in miliseconds (default: 1 min)
 #define BUTTON_SINGLE_PUSH_TIME 300                   // time to avoid double push button press, in miliseconds (better usability)
@@ -274,12 +278,20 @@
 // librarys (see doc above)
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
+#if (KEEP_SILENCE_TIME == true)
+  #include <NTPClient.h>
+  #include <WiFiUdp.h>
+#endif
 #include <ArduinoJson.h>
 #include <EEPROM.h>
 
 WiFiClient espClient;
 PubSubClient MQTT(espClient);
 
+#if (KEEP_SILENCE_TIME == true)
+  WiFiUDP ntpUDP;
+  NTPClient timeClient(ntpUDP, "pool.ntp.org");
+#endif
 //
 // internal states (globals)
 //
@@ -553,6 +565,8 @@ void setRelay(const unsigned int& relayPin, bool state);
 void loadConfig();
 void saveConfig();
 void beep(const uint8_t& n, const unsigned long& time);
+void setState(const byte& state);
+const bool isSilent();
 void wiringTest();
 String toStr(const bool& value);
 
@@ -647,7 +661,6 @@ void loop() {
   if (_sensorEnabled) {    
     // checks sump tank water level
     bool lowWaterLevel = analogRead(WATER_LOW_LEVEL_SENSOR_PIN) == 0;    
-    
     //
     // water level state machine (finite automata): avoids false positive/negatives
     //
@@ -656,54 +669,62 @@ void loop() {
     //         <---------------------------------------------------- 
     //    
     switch (_state) {
-      case 0x00:
-        // state: water level ok (sump on)
+      //
+      // state "0": water level ok (sump on)
+      //
+      case 0x00:        
+        // turns on sump pump
         sumpOn = true;
-        if (lowWaterLevel){
-          // got to waiting state
-          _state = 0x01;
-          _counter = 0;
+        if (lowWaterLevel) 
+          // got to waiting state (if low level sensor)
+          setState(0x01);                        
+        break;
+      //
+      // state "1": waiting to confirm low water level!
+      //
+      case 0x01:        
+        sumpOn = true;
+        if (!lowWaterLevel) {
+          // false alarm!
+          setState(0x00);
         }
+        else {
+          _counter++;
+          if (_counter * LOOP_TIME > WATER_SENSOR_LOW_LEVEL_TIME) 
+            // confirmed: go to low water level state!
+            setState(0x02);                     
+        }       
         break;
-      case 0x01:
-        // state: waiting to confirm low water level!
-        sumpOn = true;
-        if (!lowWaterLevel)
-          // false alarm
-          _state = 0x00;
-        _counter++;
-        if (_counter * LOOP_TIME > WATER_SENSOR_LOW_LEVEL_TIME) {
-          // confirmed: go to low water level!
-          _state = 0x02;
-        }        
-        break;
+      //
+      // state "2": low water level (sump off)
+      //
       case 0x02:
-        // state: low water level (sump off)
+        // turns off sump pump (low water level!)
         sumpOn = false;
-        if (!lowWaterLevel){
-          // got to waiting state
-          _state = 0x03;
-          _counter = 0;
-        }
+        if (!lowWaterLevel)
+          // water seens to be refilled: got to waiting state
+          setState(0x03);        
         break;
+
       case 0x03:
         // state: waiting to confirm water level is ok again!
         sumpOn = false;
-        if (lowWaterLevel)
+        if (lowWaterLevel){
           // false alarm
-          _state = 0x02;
-        _counter++;
-        if (_counter * LOOP_TIME > WATER_SENSOR_HIGH_LEVEL_TIME) {
-          // confirmed: go to water level ok!
-          _state = 0x00;
+          setState(0x02);
+        } else {
+          _counter++;
+          if (_counter * LOOP_TIME > WATER_SENSOR_HIGH_LEVEL_TIME) 
+            // confirmed: go to water level ok!
+            setState(0x00);
         }        
         break;
     }
   }
   else
   {
-    // default
-    _state = 0x00;
+    // default: no state transitions
+    setState(0x00);
   }
 
   // stops sump pump if the water level is low (protects the sump pump)  
@@ -949,6 +970,7 @@ void updateStates() {
     json["water_low"] = toStr(_lowWaterLevel);
     json["rssi"] = WiFi.RSSI();
     json["ip"] = WiFi.localIP().toString();
+    json["st"] = _state;
     
     //unsigned int n = measureJson(json) + 1;
     char message[300];
@@ -1048,6 +1070,16 @@ void connectWiFi() {
     Serial.print(F(" - RSSI [db]: "));
     Serial.println(WiFi.RSSI());    
   #endif
+
+  #if (KEEP_SILENCE_TIME == true)
+    timeClient.begin();
+    // Set offset time in seconds to adjust for your timezone, for example:
+    // GMT +1 = 3600
+    // GMT +8 = 28800
+    // GMT -1 = -3600
+    // GMT 0 = 0
+    timeClient.setTimeOffset(-10800); // GMT -3
+  #endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1108,6 +1140,24 @@ void setRelay(const unsigned int& relayPin, bool state) {
   yield();
 }
 
+
+void setState(const byte& state) {
+  //
+  // set water level finite machine state 
+  //
+  if (!_sensorEnabled){
+    // state disabled
+    _state = 0x00;
+    return;
+  }
+  if (_state == state)
+    // nothing to do
+    return;
+  _state = state;
+  _counter = 0;
+  updateStates();
+}
+
 //--------------------------------------------------------------------------------------------------
 
 void beep(const uint8_t& n = 1, const unsigned long& time = BUZZER_POWER_ON_TIME) {
@@ -1118,6 +1168,9 @@ void beep(const uint8_t& n = 1, const unsigned long& time = BUZZER_POWER_ON_TIME
   //     n       number of beeps
   //     time    beep duration (in miliseconds)
   //
+  if (isSilent())
+    return;
+
   for (uint8_t i = 0; i < n; i++) {
     digitalWrite(BUZZER_PIN, HIGH);
     delay(time);
@@ -1139,9 +1192,12 @@ void alarm() {
 }
 
 void playTune(unsigned int song = 0) {
-//
-// Plays the Dart Vader theme (Imperial March) on buzzer
-//
+  //
+  // Plays the Dart Vader theme (Imperial March) on buzzer
+  //
+  if (isSilent())
+    return;
+
   #if (PLAY_TUNES == false)
     // simple beep
     beep(200, 4);
@@ -1251,9 +1307,9 @@ void saveConfig() {
 //--------------------------------------------------------------------------------------------------
 
 void wiringTest() {
-//
-// Testing routine
-//
+  //
+  // Testing routine
+  //
   #if (TESTING_MODE == true)
 
     bool testing = true;
@@ -1339,6 +1395,21 @@ void wiringTest() {
 }
 
 //--------------------------------------------------------------------------------------------------
+
+const bool isSilent() {
+  //
+  // Returns true if "silent mode", i.e. plays no sound at down
+  //
+  #if (KEEP_SILENCE_TIME == true)
+    // gets current hour from NTP server
+    timeClient.update();  
+    int hour = timeClient.getHours();
+    return hour > SILENCE_HOUR_START || hour < SILENCE_HOUR_END;  
+  #else
+    return false;
+  #endif
+}
+
 
 String toStr(const bool& value) {
   return String(value? F("on") : F("off"));
