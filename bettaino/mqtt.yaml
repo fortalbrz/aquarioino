@@ -47,7 +47,7 @@
           name: "Fisk Tank Low Water Level Blocks Sump Pump Enabled"
           unique_id: fisk_tank_home_low_water_level_block_sump_pump_enabled
           state_topic: "bettaino/state"
-          value_template: "{{ value_json.sump_enabled }}"
+          value_template: "{{ value_json.sump_en }}"
           state_on: "on"
           state_off: "off"
           command_topic: "bettaino/cmd"
@@ -72,7 +72,7 @@
           name: "Fisk Tank Water Reposition Pump Enabled"
           unique_id: fisk_tank_home_water_reposition_pump_enabled
           state_topic: "bettaino/state"
-          value_template: "{{ value_json.repo_enabled }}"
+          value_template: "{{ value_json.repo_en }}"
           state_on: "on"
           state_off: "off"
           command_topic: "bettaino/cmd"

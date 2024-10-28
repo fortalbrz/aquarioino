@@ -161,6 +161,10 @@
 //   - DEBUG_MODE: enables/disables serial monitor debugging messages
 //   - WIRING_TEST_MODE: enables/disables a wiring test mode
 //   - PLAY_TUNES: enables play music themes
+//   - KEEP_SILENCE_TIME: true to not play sounds at dawn, false otherwise
+//   - SILENCE_HOUR_START: silence time starting hour (default: 20)
+//   - SILENCE_HOUR_END: silence time finishing hour (default: 8) 
+//   - TIME_ZONE_GMT_SHIFT: timezone as GMT shift in hours (e.g. -3 for GMT-3) 
 //
 //  MQTT topics:
 //    - bettaino/available: sensors availability ["online"/"offline"]
@@ -218,9 +222,10 @@
 #define MQTT_AVAILABILITY_TOPIC "bettaino/available"  // MQTT topic for availability notification (home assistant "unavailable" state)
 #define MQTT_DEVICE_ID "bettaino_12fmo43iowerwe2"     // MQTT session identifier
 // others
-#define KEEP_SILENCE_TIME true
-#define SILENCE_HOUR_START 20
-#define SILENCE_HOUR_END 8
+#define KEEP_SILENCE_TIME true                        // true to not play sounds at dawn, false otherwise
+#define SILENCE_HOUR_START 20                         // silence time starting hour
+#define SILENCE_HOUR_END 8                            // silence time finishing hour  
+#define TIME_ZONE_GMT_SHIFT -3                        // timezone as GMT shift in hours (e.g. -3 for GMT-3) 
 #define MQTT_STATUS_UPDATE_TIME 300000                // maximum time to send the MQTT state update, in miliseconds (default: 5 min)
 #define MQTT_AVAILABILITY_TIME 60000                  // elapsed time to send MQTT availability, in miliseconds (default: 1 min)
 #define BUTTON_SINGLE_PUSH_TIME 300                   // time to avoid double push button press, in miliseconds (better usability)
@@ -1073,12 +1078,9 @@ void connectWiFi() {
 
   #if (KEEP_SILENCE_TIME == true)
     timeClient.begin();
-    // Set offset time in seconds to adjust for your timezone, for example:
-    // GMT +1 = 3600
-    // GMT +8 = 28800
-    // GMT -1 = -3600
-    // GMT 0 = 0
-    timeClient.setTimeOffset(-10800); // GMT -3
+    // Set offset time in seconds to adjust for your timezone, 
+    // for example: GMT+1 = 3600, GMT+8 = 28800, GMT-1 = -3600, GMT 0 = 0
+    timeClient.setTimeOffset(TIME_ZONE_GMT_SHIFT * 3600);
   #endif
 }
 
