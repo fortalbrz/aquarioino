@@ -182,17 +182,18 @@
 //         "refresh": update MQTT state [debug only]
 //    - bettaino/state: retrieves NodeMCU states as json [bettaino -> home assistant]
 //         {
-//            "light": "on",          // relay #2 state (lights): [on/off]
-//            "sump": "on",           // relay #3 state (sump pump): [on/off]
-//            "repo": "off",          // relay #4 state (water reposition pump): [on/off]
-//            "sump_en": "on",   // sump pump automation routine enabled: [on/off]
-//            "repo_en": "off",  // water reposition pump automation routine enabled: [on/off]
-//            "alarm": "on",          // play a alarm sound on low water level: [on/off]
-//            "sensor": "on",         // water level sensor enabled to block the sump pump: [on/off]
-//            "water_low": "off",     // low water level: [on/off]
-//            "rssi": -68,            // wifi signal power 
-//            "ip": "192.168.0.58",   // ip address
-//            "st": 0                 // finite machine state  
+//            "light": "on",               // relay #2 state (lights): [on/off]
+//            "sump": "on",                // relay #3 state (sump pump): [on/off]
+//            "repo": "off",               // relay #4 state (water reposition pump): [on/off]
+//            "sump_en": "on",             // sump pump automation routine enabled: [on/off]
+//            "repo_en": "off",            // water reposition pump automation routine enabled: [on/off]
+//            "alarm": "on",               // play a alarm sound on low water level: [on/off]
+//            "sensor": "on",              // water level sensor enabled to block the sump pump: [on/off]
+//            "water_low": "off",          // low water level: [on/off]
+//            "rssi": -68,                 // wifi signal power 
+//            "ip": "192.168.0.58",        // ip address
+//            "mac": "1E:23:42:E3:21:F4",  // MAC address
+//            "st": 0                      // finite machine state  
 //         } 
 //------------------------------------------------------------------------------------------------------------------
 //
@@ -217,10 +218,10 @@
 #define MQTT_USERNAME "mqtt-user"                     // MQTT broker username (required)
 #define MQTT_PASSWORD "mqtt-password"                 // MQTT broker password (required) 
 // MQTT topics
-#define MQTT_COMMAND_TOPIC "bettaino/cmd"             // MQTT topic for send door commands (e.g., open from door)
-#define MQTT_STATUS_TOPIC "bettaino/status"           // MQTT topic for doorbell status
-#define MQTT_AVAILABILITY_TOPIC "bettaino/available"  // MQTT topic for availability notification (home assistant "unavailable" state)
-#define MQTT_DEVICE_ID "bettaino_12fmo43iowerwe2"     // MQTT session identifier
+#define MQTT_COMMAND_TOPIC "bettaino2/cmd"             // MQTT topic for send door commands (e.g., open from door)
+#define MQTT_STATUS_TOPIC "bettaino2/status"           // MQTT topic for doorbell status
+#define MQTT_AVAILABILITY_TOPIC "bettaino2/available"  // MQTT topic for availability notification (home assistant "unavailable" state)
+#define MQTT_DEVICE_ID "bettaino2_12fmo43iowerwe2"     // MQTT session identifier
 // others
 #define KEEP_SILENCE_TIME true                        // true to not play sounds at dawn, false otherwise
 #define SILENCE_HOUR_START 20                         // silence time starting hour
@@ -573,6 +574,7 @@ void beep(const uint8_t& n, const unsigned long& time);
 void setState(const byte& state);
 const bool isSilent();
 void wiringTest();
+String getMacAddress();
 String toStr(const bool& value);
 
 //--------------------------------------------------------------------------------------------------
@@ -974,7 +976,12 @@ void updateStates() {
     json["sensor"] = toStr(_sensorEnabled);
     json["water_low"] = toStr(_lowWaterLevel);
     json["rssi"] = WiFi.RSSI();
-    json["ip"] = WiFi.localIP().toString();
+    json["ip"] = WiFi.localIP().toString();    
+    json["mac"] = getMacAddress();
+    #if (KEEP_SILENCE_TIME == true)
+      timeClient.update();  
+      json["time"] = timeClient.getFormattedTime();
+    #endif
     json["st"] = _state;
     
     //unsigned int n = measureJson(json) + 1;
@@ -1049,9 +1056,6 @@ void connectWiFi() {
   }
 
   #if (DEBUG_MODE == true)
-    byte mac[6];
-    WiFi.macAddress(mac);
-
     Serial.println();
     Serial.print(F("WiFi connected: "));
     Serial.println(WIFI_SSID);
@@ -1060,17 +1064,7 @@ void connectWiFi() {
     Serial.println(WiFi.localIP());
 
     Serial.print(F(" - MAC: "));
-    Serial.print(mac[5], HEX);
-    Serial.print(":");
-    Serial.print(mac[4], HEX);
-    Serial.print(":");
-    Serial.print(mac[3], HEX);
-    Serial.print(":");
-    Serial.print(mac[2], HEX);
-    Serial.print(":");
-    Serial.print(mac[1], HEX);
-    Serial.print(":");
-    Serial.println(mac[0], HEX);
+    Serial.println(getMacAddress());
     
     Serial.print(F(" - RSSI [db]: "));
     Serial.println(WiFi.RSSI());    
@@ -1410,6 +1404,17 @@ const bool isSilent() {
   #else
     return false;
   #endif
+}
+
+String getMacAddress() {
+  //
+  // Gets current MAC address
+  //
+  byte mac[6];
+  WiFi.macAddress(mac);
+  
+  return String(mac[5], HEX) + String(":") + String(mac[4], HEX) + String(":") + String(mac[3], HEX) + 
+    String(":") + String(mac[2], HEX) + String(":") + String(mac[1], HEX) + String(":") + String(mac[0], HEX);
 }
 
 
