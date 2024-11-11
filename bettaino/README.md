@@ -18,8 +18,8 @@
 ## Features:
  - fully integrated with Home Assistant (MQTT)
  - automation of water replenishment by evaporation (optional, see ENABLE_WATER_REPOSITION configuration flag)
- - four relays: feeder, lights, sump pump, water reposition pump, etc
- - feeding 
+ - four relays: fish feeder, lights, sump pump, water reposition pump, etc
+ - automated fish feeding 
  - push buttons: 
    - lightning turn on/off button
    - feeding button
@@ -63,42 +63,49 @@ This project should communicate with a MQTT broker (e.g., *mosquitto broker*), i
 ![project resources](https://github.com/fortalbrz/aquarioino/blob/main/bettaino/img/wiring_diagram.png?raw=true)
 
 [[wiring diagram](https://www.circuito.io/app?components=513,13322,360216,442979)]:
-  - NodeMCU (GND) -> power supply 5vdc (negative/Gnd)
-  - NodeMCU (Vin) -> power supply 5vdc (positive/Vcc)
-  - Relay 4 ch (VCC) -> power supply 5vdc (negative/Gnd)
-  - Relay 4 ch (GND) -> power supply 5vdc (positive/Vcc)
-  - Relay 4 ch (In 1) -> NodeMCU (D4)
-  - Relay 4 ch (In 2) -> NodeMCU (D5)
-  - Relay 4 ch (In 3) -> NodeMCU (D6)
-  - Relay 4 ch (In 4) -> NodeMCU (D7)
-  - NodeMCU "D1" -> resistor 10k ohms "A" terminal 1 
-  - resistor 10k ohms "A" terminal 2 -> NodeMCU (3.3V)
-  - NodeMCU "D2" -> resistor 10k ohms "B" terminal 1
-  - resistor 10k ohms "B" terminal 2 -> NodeMCU (3.3V)
-  - NodeMCU "D1" -> tactile push button "FEED" terminal 1 (NC)
-  - tactile push button "FEED" terminal 2 (NC) -> -5 V power source (GND)
-  - NodeMCU "D2" -> tactile push button "LIGHT" terminal 1 (NC)
-  - tactile push button "LIGHT" terminal 2 (NC) -> -5 V power source (GND)
-  - NodeMCU "A0" -> water level sensor terminal 1 (*optional*, see **ENABLE_WATER_REPOSITION** configuration flag)
-  - water level sensor terminal 2 -> NodeMCU (3.3V) (*optional*, see **ENABLE_WATER_REPOSITION** configuration flag)
-  - NodeMCU "A0" -> resistor 10k ohms "C" terminal 1 (*optional*, see **ENABLE_WATER_REPOSITION** configuration flag)
-  - resistor 10k ohms "C" terminal 2 -> NodeMCU "GND" (*optional*, see **ENABLE_WATER_REPOSITION** configuration flag)
-  - NodeMCU "D3" -> resistor 1k ohms terminal 1
-  - resistor 1k ohms terminal 2 -> BC548 transistor base (pin 2 - leg at middle)
-  - BC548 transistor collector (pin 1 - left leg) -> buzzer 5v negative terminal (-)
-  - buzzer 5v positive terminal (+) -> +5 V power source (Vcc)
-  - BC548 transistor emitter (pin 3 - right leg) -> -5 V power source (GND)
-  - Led terminal 1 (positive) -> +5 V power source (VCC) (optional, "power on led")
-  - Led terminal 2 (negative/bevel) -> resistor 10k ohms "D" terminal 1 (optional, "power on led")
-  - resistor 10k ohms "D" terminal 2 -> -5 V power source (GND) (optional, "power on led")
-  - capacitor 100uF (positive) -> +5 V power source (VCC) (optional)
-  - capacitor 100uF (negative/"minus sign") -> resistor 10k ohms "D" terminal 2 (optional)
+  - power:
+    - NodeMCU (GND) -> power supply 5vdc (negative/Gnd)
+    - NodeMCU (Vin) -> power supply 5vdc (positive/Vcc)
+  - relays (4-channels module):
+    - Relay 4 ch (VCC) -> power supply 5vdc (negative/Gnd)
+    - Relay 4 ch (GND) -> power supply 5vdc (positive/Vcc)
+    - Relay 4 ch (In 1) -> NodeMCU (D4)
+    - Relay 4 ch (In 2) -> NodeMCU (D5)
+    - Relay 4 ch (In 3) -> NodeMCU (D6)
+    - Relay 4 ch (In 4) -> NodeMCU (D7)
+  - push buttons:
+    - NodeMCU "D1" -> resistor 10k ohms "A" terminal 1 
+    - resistor 10k ohms "A" terminal 2 -> NodeMCU (3.3V)
+    - NodeMCU "D2" -> resistor 10k ohms "B" terminal 1
+    - resistor 10k ohms "B" terminal 2 -> NodeMCU (3.3V)
+    - NodeMCU "D1" -> tactile push button "FEED" terminal 1 (NC)
+    - tactile push button "FEED" terminal 2 (NC) -> -5 V power source (GND)
+    - NodeMCU "D2" -> tactile push button "LIGHT" terminal 1 (NC)
+    - tactile push button "LIGHT" terminal 2 (NC) -> -5 V power source (GND)
+  - water level sensor (*optional*, see **ENABLE_WATER_REPOSITION** configuration flag):
+    - NodeMCU "A0" -> water level sensor terminal 1
+    - water level sensor terminal 2 -> NodeMCU (3.3V)
+    - NodeMCU "A0" -> resistor 10k ohms "C" terminal 1
+    - resistor 10k ohms "C" terminal 2 -> NodeMCU "GND"
+    - NodeMCU "D3" -> resistor 1k ohms terminal 1
+  - buzzer  (*optional*, see **PLAY_TUNE** configuration flag)
+    - resistor 1k ohms terminal 2 -> BC548 transistor base (pin 2 - leg at middle)
+    - BC548 transistor collector (pin 1 - left leg) -> buzzer 5v negative terminal (-)
+    - buzzer 5v positive terminal (+) -> +5 V power source (Vcc)
+    - BC548 transistor emitter (pin 3 - right leg) -> -5 V power source (GND)
+  - "power on led" (*optional*)
+    - Led terminal 1 (positive) -> +5 V power source (VCC)
+    - Led terminal 2 (negative/bevel) -> resistor 10k ohms "D" terminal 1
+    - resistor 10k ohms "D" terminal 2 -> -5 V power source (GND)
+  - power supply filter capacitor (*optional*)
+    - capacitor 100uF (positive) -> +5 V power source (VCC)
+    - capacitor 100uF (negative/"minus sign") -> resistor 10k ohms "D" terminal 2
 
 
 
 
 ## Source code:
- - **https://github.com/fortalbrz/aquarioino/bettaino**
+ - **https://github.com/fortalbrz/aquarioino/tree/main/bettaino**
 
 
 ## Flashing the code
@@ -287,14 +294,17 @@ And creates a file "*[mqtt.yaml](https://github.com/fortalbrz/aquarioino/blob/ma
 
 
          {
-             "light": "on",          // relay #2 state (lights): [on/off]
-             "sump": "on",           // relay #3 state (sump pump): [on/off]
-             "repo": "off",          // relay #4 state (water reposition pump): [on/off]
-             "sump_en": "on",        // sump pump automation routine enabled: [on/off]
-             "repo_en": "off",       // water reposition pump automation routine enabled: [on/off]
-             "alarm": "on",          // play a alarm sound on low water level: [on/off]
-             "sensor": "on",         // water level sensor enabled to block the sump pump: [on/off]
-             "water_low": "off"      // low water level: [on/off]
+             "light": "on",                // relay #2 state (lights): [on/off]
+             "sump": "on",                 // relay #3 state (sump pump): [on/off]
+             "repo": "off",                // relay #4 state (water reposition pump): [on/off]
+             "sump_en": "on",              // sump pump automation routine enabled: [on/off]
+             "repo_en": "off",             // water reposition pump automation routine enabled: [on/off]
+             "alarm": "on",                // play a alarm sound on low water level: [on/off]
+             "sensor": "on",               // water level sensor enabled to block the sump pump: [on/off]
+             "water_low": "off"            // low water level: [on/off]
+             "rssi": -68,                  // wifi signal power [db]
+             "ip": "192.168.0.58",         // ip address
+             "mac": "E3:3A:21:34:FE:21",   // mac address
          } 
 
 
@@ -314,7 +324,6 @@ And creates a file "*[mqtt.yaml](https://github.com/fortalbrz/aquarioino/blob/ma
 | ENABLE_WATER_REPOSITION    | true    | enables/disables water level sensors (disable it to not use the water level sensors)          |
 | DEBUG_MODE                 | false   | true to debug on serial monitor (debug), false otherwise                                      |
 | WIRING_TEST_MODE           | false   | enables/disables a wiring test routine                                                        |
-| PLAY_TUNE                  | true    | enables play music themes                                                                     |
 | PLAY_TUNE                  | true    | enables play music themes                                                                     |
 | KEEP_SILENCE_TIME          | true    | true to not play sounds at dawn, false otherwise                                              |
 | SILENCE_HOUR_START         | 20      | silence time starting hour                                                                    |
