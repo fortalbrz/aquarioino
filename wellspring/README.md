@@ -1,15 +1,10 @@
-# BETTA.INO 
-## :house_with_garden: Aquarium Automation with Home Assistant and NodeMCU
+# WELLSPRING.INO 
+## :house_with_garden: Water Fountain Automation with Home Assistant and NodeMCU
 
 **Optimized for NodeMCU 1.0 (ESP-12E Module)** 
 
-<center>
 
-![logo](https://github.com/fortalbrz/aquarioino/blob/main/bettaino/img/logo.png?raw=true)
-
-</center>
-
-[Home Assistant](https://home-assistant.io) is free and open-source software used for home automation. It serves as an integration platform and smart home hub, allowing users to control smart home devices. This project objective is to control and integrate a fisk tank with Home Assistant using the [MQTT]((https://www.home-assistant.io/integrations/mqtt/)) protocol. The MQTT (aka MQ Telemetry Transport) is a machine-to-machine or "*Internet of Things*" connectivity protocol on top of TCP/IP. It allows extremely lightweight publish/subscribe messaging transport.
+[Home Assistant](https://home-assistant.io) is free and open-source software used for home automation. It serves as an integration platform and smart home hub, allowing users to control smart home devices. This project objective is to control and integrate a small "Buddha" water fountain with Home Assistant using the [MQTT]((https://www.home-assistant.io/integrations/mqtt/)) protocol. The MQTT (aka MQ Telemetry Transport) is a machine-to-machine or "*Internet of Things*" connectivity protocol on top of TCP/IP. It allows extremely lightweight publish/subscribe messaging transport.
 
  - **Video**: **[YouTube](https://youtu.be/uQc_9umpfpI)** [pt]
 
@@ -17,20 +12,16 @@
 
 ## Features:
  - fully integrated with Home Assistant (MQTT)
- - automation of water replenishment by evaporation (optional, see ENABLE_WATER_REPOSITION configuration flag)
- - four relays: feeder, lights, sump pump, water reposition pump, etc
- - feeding 
+ - led lights
+ - two relays: water pump and extra outlet
+ - plays music! 
  - push buttons: 
-   - lightning turn on/off button
-   - feeding button
+   - water pump turn on/off button
+   - lightning turn on/off button   
  - home assistant switches:
-   - feeding button
+   - water pump switch
    - lightening switch
-   - "sump" and "water reposition" pumps automation switches
-
-### Water Replenishment (due evaporation loses):
-
-This routine uses a water level sensor to refill the fisk tank with clean water (from an external container) when the water level is low.
+   - extra outlet switch
 
 
 ## MQTT broker
@@ -41,64 +32,74 @@ This project should communicate with a MQTT broker (e.g., *mosquitto broker*), i
 
 
 ## Materials:
- - 1 x NodeMCU (ESP 8266-12e) - [[25 BRL](https://produto.mercadolivre.com.br/MLB-1211973212-modulo-wifi-esp8266-nodemcu-esp-12e-_JM)]
- - 1 x relay module 5v 4-ch - [[24 BRL](https://produto.mercadolivre.com.br/MLB-1758894951-modulo-rele-rele-5v-4-canais-para-arduino-pic-raspberry-pi-_JM)]
- - 1 x water level sensor - [[R$ 14](https://produto.mercadolivre.com.br/MLB-3164716754-sensor-de-nivel-de-agua-interruptor-de-boia-e-mini-boia-c-_JM)] (*optional*, see **ENABLE_WATER_REPOSITION** configuration flag)
- - 1 x active buzzer 5v - [[2.30 BRL](https://www.a2robotics.com.br/buzzer-ativo-5v)]
- - 1 x NPN BC548 transistor - [[1.20  BRL](https://produto.mercadolivre.com.br/MLB-1712833525-transistor-bc548-npn-para-projetos-10-pecas-_JM )]
- - 2 x tactile push button - [[0.20 BRL](https://www.a2robotics.com.br/chave-tactil-6x6x5mm-4-terminais)]
- - 3 x resistor 10k ohms (1/8w) 
- - 1 x resistor 1k ohms (1/8w) 
- - 1 x power supply 5vdc (1A) - [[14 BRL](https://produto.mercadolivre.com.br/MLB-3445635491-fonte-alimentaco-5v-1a-bivolt-roteador-wireles-modem-d-link-_JM)]
- - 1 x led and resistor 10k ohms (optional, indicates "power on")
- - 1 x electrolytic capacitor 100 uF (optional)
- - 1 x large plastic water container (reused, optional as "water reposition container")
- - plastic hoses (connect bumps)
+ - 1x NodeMCU (ESP 8266-12e) - [[25 BRL](https://produto.mercadolivre.com.br/MLB-1211973212-modulo-wifi-esp8266-nodemcu-esp-12e-_JM)]
+ - 1x relay module 5v 2-ch - [[24 BRL](https://produto.mercadolivre.com.br/MLB-1758894951-modulo-rele-rele-5v-4-canais-para-arduino-pic-raspberry-pi-_JM)]
+ - 1x active buzzer 5v - [[2.30 BRL](https://www.a2robotics.com.br/buzzer-ativo-5v)]
+ - 2x NPN BC548 transistor - [[1.20  BRL](https://produto.mercadolivre.com.br/MLB-1712833525-transistor-bc548-npn-para-projetos-10-pecas-_JM )]
+ - 2x tactile push button - [[0.20 BRL](https://www.a2robotics.com.br/chave-tactil-6x6x5mm-4-terminais)]
+ - 2x resistor 1k ohms (1/8w) 
+ - 1x power supply 5vdc (1A) - [[14 BRL](https://produto.mercadolivre.com.br/MLB-3445635491-fonte-alimentaco-5v-1a-bivolt-roteador-wireles-modem-d-link-_JM)]
+ - 20x led and resistor 480 ohms (optional, lights)
+ - 1x switch on/off
+ - 1x electrolytic capacitor 100 uF (optional)
+ - 1x Small buddha statue
+ - 1x Aquarium Pump (3w, 200L/h)
+ - 1x Ceramic Plate (base) 
+ - 4x Small Clay Pots
+ - 1x White Stones (1kg)
  - flexible cab (22 agw)
+ - "Durepox" epoxy resin (100g)
+ - Silicone Glue (50g)
+ 
+
  
 
 ## Circuit Wiring Instruction (step by step):
 
 
-![project resources](https://github.com/fortalbrz/aquarioino/blob/main/bettaino/img/wiring_diagram.png?raw=true)
-
-[[wiring diagram](https://www.circuito.io/app?components=513,13322,360216,442979)]:
-  - NodeMCU (GND) -> power supply 5vdc (negative/Gnd)
-  - NodeMCU (Vin) -> power supply 5vdc (positive/Vcc)
-  - Relay 4 ch (VCC) -> power supply 5vdc (negative/Gnd)
-  - Relay 4 ch (GND) -> power supply 5vdc (positive/Vcc)
-  - Relay 4 ch (In 1) -> NodeMCU (D4)
-  - Relay 4 ch (In 2) -> NodeMCU (D5)
-  - Relay 4 ch (In 3) -> NodeMCU (D6)
-  - Relay 4 ch (In 4) -> NodeMCU (D7)
-  - NodeMCU "D1" -> resistor 10k ohms "A" terminal 1 
-  - resistor 10k ohms "A" terminal 2 -> NodeMCU (3.3V)
-  - NodeMCU "D2" -> resistor 10k ohms "B" terminal 1
-  - resistor 10k ohms "B" terminal 2 -> NodeMCU (3.3V)
-  - NodeMCU "D1" -> tactile push button "FEED" terminal 1 (NC)
-  - tactile push button "FEED" terminal 2 (NC) -> -5 V power source (GND)
-  - NodeMCU "D2" -> tactile push button "LIGHT" terminal 1 (NC)
-  - tactile push button "LIGHT" terminal 2 (NC) -> -5 V power source (GND)
-  - NodeMCU "A0" -> water level sensor terminal 1 (*optional*, see **ENABLE_WATER_REPOSITION** configuration flag)
-  - water level sensor terminal 2 -> NodeMCU (3.3V) (*optional*, see **ENABLE_WATER_REPOSITION** configuration flag)
-  - NodeMCU "A0" -> resistor 10k ohms "C" terminal 1 (*optional*, see **ENABLE_WATER_REPOSITION** configuration flag)
-  - resistor 10k ohms "C" terminal 2 -> NodeMCU "GND" (*optional*, see **ENABLE_WATER_REPOSITION** configuration flag)
-  - NodeMCU "D3" -> resistor 1k ohms terminal 1
-  - resistor 1k ohms terminal 2 -> BC548 transistor base (pin 2 - leg at middle)
-  - BC548 transistor collector (pin 1 - left leg) -> buzzer 5v negative terminal (-)
-  - buzzer 5v positive terminal (+) -> +5 V power source (Vcc)
-  - BC548 transistor emitter (pin 3 - right leg) -> -5 V power source (GND)
-  - Led terminal 1 (positive) -> +5 V power source (VCC) (optional, "power on led")
-  - Led terminal 2 (negative/bevel) -> resistor 10k ohms "D" terminal 1 (optional, "power on led")
-  - resistor 10k ohms "D" terminal 2 -> -5 V power source (GND) (optional, "power on led")
-  - capacitor 100uF (positive) -> +5 V power source (VCC) (optional)
-  - capacitor 100uF (negative/"minus sign") -> resistor 10k ohms "D" terminal 2 (optional)
-
+[[wiring diagram]]:
+  - power:
+    - NodeMCU (GND) -> power supply 5vdc (negative/Gnd)
+    - NodeMCU (Vin) -> power supply 5vdc (positive/Vcc)  
+  - relay module (2-channels - sets "NUMBER_OF_RELAYS" as "1" for use a single relay module)):
+    - Relay 2 ch (VCC) -> power supply 5vdc (negative/Gnd)
+    - Relay 2 ch (GND) -> power supply 5vdc (positive/Vcc)
+    - Relay 2 ch (In 1) [water pump] -> NodeMCU (D4)
+    - Relay 2 ch (In 2) [extra outlet] -> NodeMCU (D5)  
+  - push buttons (optional - set "USE_PUSH_BUTTONS" as false to ignore):
+    - NodeMCU "D1" -> resistor 1k ohms "A" terminal 1 
+    - resistor 1k ohms "A" terminal 2 -> NodeMCU (3.3V)
+    - NodeMCU "D2" -> resistor 1k ohms "B" terminal 1
+    - resistor 1k ohms "B" terminal 2 -> NodeMCU (3.3V)
+    - NodeMCU "D1" -> tactile push button "water pump on/off" terminal 1 (NC)
+    - tactile push button "water pump on/off" terminal 2 (NC) -> -5 V power source (GND)
+    - NodeMCU "D2" -> tactile push button "light on/off" terminal 1 (NC)
+    - tactile push button "light on/off" terminal 2 (NC) -> -5 V power source (GND)
+  - leds (up to 20 leds):
+    - NodeMCU "D3" -> resistor 1k ohms terminal 1
+    - resistor 1k ohms terminal 2 -> BC548 transistor "A" base (pin 2 - leg at middle)
+    - BC548 transistor "A" emitter (pin 3 - right leg) -> -5 V power source (GND)
+    - BC548 transistor "A" collector (pin 1 - left leg) -> 480 ohms resistor "led" terminal 1 (connects 20 up to leds in parallel at this point)
+    - 480 ohms resistor "led" terminal 1 -> Led terminal 2 (negative/bevel) (connects up to 20 leds in parallel)
+    - Led terminal 1 (positive) -> +5 V power source (Vcc) (connects 20 up to leds in parallel at this point)    
+  - buzzer: (optional - set "PLAY_TUNES" as false to ignore)
+    - NodeMCU "D6" -> resistor 1k ohms terminal 1
+    - resistor 1k ohms terminal 2 -> BC548 transistor "B" base (pin 2 - leg at middle)
+    - BC548 transistor "B" collector (pin 1 - left leg) -> buzzer 5v negative terminal (-)
+    - buzzer 5v positive terminal (+) -> +5 V power source (Vcc)
+    - BC548 transistor "B" emitter (pin 3 - right leg) -> -5 V power source (GND)
+  - power on indicator led (optional)
+    - Led terminal 1 (positive) -> +5 V power source (VCC) (optional, "power on led")
+    - Led terminal 2 (negative/bevel) -> resistor 10k ohms "D" terminal 1 (optional, "power on led")
+    - resistor 10k ohms "D" terminal 2 -> -5 V power source (GND) (optional, "power on led")
+  - filter capacitor (optional)
+    - capacitor 100uF (positive) -> +5 V power source (VCC) (optional)
+    - capacitor 100uF (negative/"minus sign") -> resistor 10k ohms "D" terminal 2 (optional)
 
 
 
 ## Source code:
- - **https://github.com/fortalbrz/aquarioino/bettaino**
+ - **https://github.com/fortalbrz/aquarioino/tree/main/wellspring**
 
 
 ## Flashing the code
@@ -117,16 +118,6 @@ The ESP-01 module should be programed with the sketch with the [Arduino IDE](htt
   - select Sketch > Upload
 
 
-### Error Codes (buzzer)
-   - 2 fast bips: Wifi error
-   - 3 fast bips: MQTT broker error
-   - 5 bips: low water level alarm
-
-
-### Wiring Testing:
-
-Sets the macro "**WIRING_TEST_MODE**" as true in order to check buttons, relays and water sensor connections (testing only)
-
 ### Serial Monitor:
 Sets the macro "**DEBUG_MODE**" as true in order to debug on serial monitor (testing only) - ensure the baud rate setup!
 
@@ -142,144 +133,93 @@ Adds the line on *configuration.yaml*:
 And creates a file "*[mqtt.yaml](https://github.com/fortalbrz/aquarioino/blob/main/bettaino/mqtt.yaml)*" as follow:
 
 
-      - binary_sensor:
-          #
-          # Fish tank - low water level: on/off
-          #
-          name: "Fish Tank Low Water Level"
-          state_topic: "bettaino/state"
-          value_template: "{{ value_json.water_low }}"
-          payload_on: "on"
-          payload_off: "off"
-          availability:
-            - topic: "bettaino/available"
-              payload_available: "online"
-              payload_not_available: "offline"
-          qos: 0
-          device_class: "problem"
-          icon: mdi:hydraulic-oil-level
       - switch:
-          #
-          # Fish tank lights: on/off
-          #
-          name: "Fish Tank Lights"
-          unique_id: aquarium_home_lights
-          state_topic: "bettaino/state"
-          value_template: "{{ value_json.light }}"
-          state_on: "on"
-          state_off: "off"
-          command_topic: "bettaino/cmd"
-          payload_on: "light on"
-          payload_off: "light off"
-          availability:
-            - topic: "bettaino/available"
-              payload_available: "online"
-              payload_not_available: "offline"
-          availability_mode: latest
-          enabled_by_default: true
-          optimistic: false
-          qos: 0
-          retain: true
-          device_class: "outlet"
-          icon: mdi:spotlight-beam
+        #
+        # buddha fountain (main bedroom) - enables water pump: on/off
+        #
+        name: "Buddha Fountain Pump"
+        unique_id: buddha_wellspring_pump
+        state_topic: "wellspring/status"
+        value_template: "{{ value_json.pump }}"
+        state_on: "on"
+        state_off: "off"
+        json_attributes_topic: "wellspring/status"
+        json_attributes_template: "{{ value_json | tojson }}"
+        command_topic: "wellspring/cmd"
+        payload_on: "pump on"
+        payload_off: "pump off"
+        availability:
+          - topic: "wellspring/available"
+            payload_available: "online"
+            payload_not_available: "offline"
+        availability_mode: latest
+        enabled_by_default: true
+        optimistic: false
+        qos: 0
+        retain: true
+        device_class: "outlet"
+        icon: mdi:pump
       - switch:
-          #
-          # Fish tank (home) - enables low water level to stop sump pump: on/off
-          #
-          name: "Fisk Tank Low Water Level Blocks Sump Pump Enabled"
-          unique_id: fisk_tank_home_low_water_level_block_sump_pump_enabled
-          state_topic: "bettaino/state"
-          value_template: "{{ value_json.sump_en }}"
-          state_on: "on"
-          state_off: "off"
-          command_topic: "bettaino/cmd"
-          payload_on: "sump enable"
-          payload_off: "sump disable"
-          availability:
-            - topic: "bettaino/available"
-              payload_available: "online"
-              payload_not_available: "offline"
-          availability_mode: latest
-          enabled_by_default: true
-          optimistic: false
-          qos: 0
-          retain: true
-          device_class: "outlet"
-          icon: mdi:pump
+        #
+        # buddha fountain (main bedroom) - enables led lights: on/off
+        #
+        name: "Buddha Fountain Light"
+        unique_id: buddha_wellspring_light
+        state_topic: "wellspring/status"
+        value_template: "{{ value_json.light }}"
+        state_on: "on"
+        state_off: "off"
+        command_topic: "wellspring/cmd"
+        payload_on: "light on"
+        payload_off: "light off"
+        availability:
+          - topic: "wellspring/available"
+            payload_available: "online"
+            payload_not_available: "offline"
+        availability_mode: latest
+        enabled_by_default: true
+        optimistic: false
+        qos: 0
+        retain: true
+        device_class: "outlet"
+        icon: mdi:led-strip
       - switch:
-          #
-          # Fish tank - enables water reposition pump: on/off
-          #
-          name: "Fisk Tank Water Reposition Pump Enabled"
-          unique_id: fisk_tank_home_water_reposition_pump_enabled
-          state_topic: "bettaino/state"
-          value_template: "{{ value_json.repo_en }}"
-          state_on: "on"
-          state_off: "off"
-          command_topic: "bettaino/cmd"
-          payload_on: "repo enable"
-          payload_off: "repo disable"
-          availability:
-            - topic: "bettaino/available"
-              payload_available: "online"
-              payload_not_available: "offline"
-          availability_mode: latest
-          enabled_by_default: true
-          optimistic: false
-          qos: 0
-          retain: true
-          device_class: "outlet"
-          icon: mdi:pump
-      - button:
-          #
-          # fisk tank feeding (home)
-          #
-          name: "Fisk Tank Feed"
-          unique_id: aquarium_home_feed
-          command_topic: "bettaino/cmd"
-          payload_press: "feed"
-          availability:
-            - topic: "bettaino/available"
-              payload_available: "online"
-              payload_not_available: "offline"
-          qos: 0
-          retain: false
-          entity_category: "config"
-          device_class: "restart"
-      - button:
-          #
-          # plays music
-          #
-          name: "Fisk Tank Plays Music"
-          unique_id: aquario_home_play
-          command_topic: "bettaino/cmd"
-          payload_press: "play"
-          availability:
-            - topic: "bettaino/available"
-              payload_available: "online"
-              payload_not_available: "offline"
-          qos: 0
-          retain: false
-          entity_category: "config"
-          device_class: "restart"
-
+        #
+        # buddha fountain (main bedroom) - enables power outlet (on/off)
+        #
+        name: "Buddha Fountain Outlet"
+        unique_id: buddha_wellspring_relay2
+        state_topic: "wellspring/status"
+        value_template: "{{ value_json.relay2 }}"
+        state_on: "on"
+        state_off: "off"
+        command_topic: "wellspring/cmd"
+        payload_on: "relay2 on"
+        payload_off: "relay2 off"
+        availability:
+          - topic: "wellspring/available"
+            payload_available: "online"
+            payload_not_available: "offline"
+        availability_mode: latest
+        enabled_by_default: true
+        optimistic: false
+        qos: 0
+        retain: true
+        device_class: "outlet"
+        icon: mdi:light-switch
+      
 
 
 ## MQTT topics:
 
    - **bettaino/available**: sensors availability [*"online"/"offline"*]
 
-   - **bettaino/cmd**: pushes commands to NodeMCU [*home assistant -> bettaino*]:
-     - "*feed*": feeding routine (simulate a use button press on relay #1 - connect to feeder button)
-     - "*light on/off*": turns on/off the lights (i.e. relay #2)
-     - "*sump enable/disable*": enables/disables sump pump automation routine
-     - "*repo enable/disable*": enables/disables water reposition pump automation routine
-     - "*alarm on/off*": turns on/off a low water level alarm sound
+   - **wellspring/cmd**: pushes commands to NodeMCU [*home assistant -> wellspring*]:
+     - "*pump on/off*": turns on/off the water pump
+     - "*light on/off*": turns on/off the led lights
+     - "*relay2 on/off*": turns on/off the extra power outlet
      - "*beep*": plays a beep sound [for any notification]
-     - "*play [sw/dv/tetris/mario/got/gf/nokia/notice]*": plays an tune by name [for any notification] (*none for random*)
-     - "*emergency on/off*": emergency alarm [for any notification]
-     - "*sensor on/off*": enables/disables the water level sensor to block the sump pump [debug only]
-     - "*relays on/off*": turn on/off all relays [debug only]
+     - "*play [sw/dv/tetris/mario/got/gf/brahms/cannon]*": plays an tune by name [for any notification] (*none for random*)
      - "*refresh*": update MQTT state [debug only]
 
 
@@ -287,14 +227,12 @@ And creates a file "*[mqtt.yaml](https://github.com/fortalbrz/aquarioino/blob/ma
 
 
          {
-             "light": "on",          // relay #2 state (lights): [on/off]
-             "sump": "on",           // relay #3 state (sump pump): [on/off]
-             "repo": "off",          // relay #4 state (water reposition pump): [on/off]
-             "sump_en": "on",        // sump pump automation routine enabled: [on/off]
-             "repo_en": "off",       // water reposition pump automation routine enabled: [on/off]
-             "alarm": "on",          // play a alarm sound on low water level: [on/off]
-             "sensor": "on",         // water level sensor enabled to block the sump pump: [on/off]
-             "water_low": "off"      // low water level: [on/off]
+             "light": "on",                // led lights state: [on/off]
+             "pump": "on",                 // relay #1 state (water pump): [on/off]
+             "relay2": "off",              // relay #2 state (extra power outlet): [on/off]
+             "rssi": -60,                  // wifi signal power
+             "ip": "192.168.0.100",        // ip address
+             "mac": "E3:3A:21:34:FE:21"    // mac address
          } 
 
 
@@ -311,14 +249,10 @@ And creates a file "*[mqtt.yaml](https://github.com/fortalbrz/aquarioino/blob/ma
 | MQTT_USERNAME              |         | MQTT broker username                                                                          |
 | MQTT_PASSWORD              |         | MQTT broker password                                                                          |
 | MQTT_DEVICE_ID             |         | MQTT session identifier (changes for more then one gardeino on the same MQTT broker)          |
-| ENABLE_WATER_REPOSITION    | true    | enables/disables water level sensors (disable it to not use the water level sensors)          |
+| PLAY_TUNES                 | true    | enables play music themes (disables to not assembly the buzzer)                               |
+| USE_PUSH_BUTTONS           | true    | enables play tactile push buttons (disables to not assembly the push buttons)                 |
+| NUMBER_OF_RELAYS           | 2       | 1 for single relay module, 2 for 2-channels relay module                                      |
 | DEBUG_MODE                 | false   | true to debug on serial monitor (debug), false otherwise                                      |
-| WIRING_TEST_MODE           | false   | enables/disables a wiring test routine                                                        |
-| PLAY_TUNE                  | true    | enables play music themes                                                                     |
-| PLAY_TUNE                  | true    | enables play music themes                                                                     |
-| KEEP_SILENCE_TIME          | true    | true to not play sounds at dawn, false otherwise                                              |
-| SILENCE_HOUR_START         | 20      | silence time starting hour                                                                    |
-| SILENCE_HOUR_END           | 8       | silence time finishing hour                                                                   |
 
 <hr>
 

@@ -35,52 +35,69 @@
 // - buzzer for error notifications (and play star wars tunes!)
 //
 // Materials:
-//   - 1 x NodeMCU (ESP 8266-12e) [25 BRL](https://produto.mercadolivre.com.br/MLB-1211973212-modulo-wifi-esp8266-nodemcu-esp-12e-_JM)
-//   - 1 x relay module 5v 2-channels [12 BRL](https://produto.mercadolivre.com.br/MLB-1758894951-modulo-rele-rele-5v-4-canais-para-arduino-pic-raspberry-pi-_JM)
-//   - 1 x active buzzer 5v [2.30 BRL](https://www.a2robotics.com.br/buzzer-ativo-5v)
-//   - 1 x NPN BC548 transistor [1.20  BRL](https://produto.mercadolivre.com.br/MLB-1712833525-transistor-bc548-npn-para-projetos-10-pecas-_JM )
-//   - 2 x tactile push button [0.20 BRL](https://www.a2robotics.com.br/chave-tactil-6x6x5mm-4-terminais)
-//   - 3 x resistor 10k ohms (1/8w) 
-//   - 1 x resistor 1k ohms (1/8w) 
-//   - 1 x power supply 5vdc (1A) [14 BRL](https://produto.mercadolivre.com.br/MLB-3445635491-fonte-alimentaco-5v-1a-bivolt-roteador-wireles-modem-d-link-_JM)
-//   - 1 x led and resistor 10k ohms (optional, indicates "power on")
-//   - 1 x electrolytic capacitor 100 uF (optional)
+//   - 1x NodeMCU (ESP 8266-12e) [25 BRL](https://produto.mercadolivre.com.br/MLB-1211973212-modulo-wifi-esp8266-nodemcu-esp-12e-_JM)
+//   - 1x relay module 5v 2-channels [12 BRL](https://produto.mercadolivre.com.br/MLB-1758894951-modulo-rele-rele-5v-4-canais-para-arduino-pic-raspberry-pi-_JM)
+//   - 1x active buzzer 5v [2.30 BRL](https://www.a2robotics.com.br/buzzer-ativo-5v)
+//   - 2x NPN BC548 transistor [1.20  BRL](https://produto.mercadolivre.com.br/MLB-1712833525-transistor-bc548-npn-para-projetos-10-pecas-_JM )
+//   - 2x tactile push button [0.20 BRL](https://www.a2robotics.com.br/chave-tactil-6x6x5mm-4-terminais)
+//   - 2x resistor 1k ohms (1/8w) 
+//   - 20x led and resistor 480 ohms (1/8w) 
+//   - 1x power supply 5vdc (1A) [14 BRL](https://produto.mercadolivre.com.br/MLB-3445635491-fonte-alimentaco-5v-1a-bivolt-roteador-wireles-modem-d-link-_JM)
+//   - 1x on/off switch 
+//   - 1x led and resistor 10k ohms (optional, indicates "power on")
+//   - 1x electrolytic capacitor 100 uF (optional)
+//   - 1x aquarium pump (3w, 200L/h)
+//   - 1x small buddha statue
+//   - 1x ceramic Plate (base) 
+//   - 4x small clay Pots
+//   - 1x white stones (1kg) 
 //   - flexible cab (22 agw)
+//   - silicone Glue (50g)
+//   - "durepox" epoxy resin (100g) 
 //
 // Circuit Wiring Instruction:
-//   - NodeMCU (GND) --> power supply 5vdc (negative/Gnd)
-//   - NodeMCU (Vin) --> power supply 5vdc (positive/Vcc)
-//   - Relay 2 ch (VCC) --> power supply 5vdc (negative/Gnd)
-//   - Relay 2 ch (GND) --> power supply 5vdc (positive/Vcc)
-//   - Relay 2 ch (In 1) --> NodeMCU (D4)
-//   - Relay 2 ch (In 2) --> NodeMCU (D5)
-//   - NodeMCU "D1" --> resistor 10k ohms "A" terminal 1 
-//   - resistor 10k ohms "A" terminal 2 --> NodeMCU (3.3V)
-//   - NodeMCU "D2" --> resistor 10k ohms "B" terminal 1
-//   - resistor 10k ohms "B" terminal 2 --> NodeMCU (3.3V)
-//   - NodeMCU "D1" --> tactile push button "FEED" terminal 1 (NC)
-//   - tactile push button "FEED" terminal 2 (NC) --> -5 V power source (GND)
-//   - NodeMCU "D2" --> tactile push button "LIGHT" terminal 1 (NC)
-//   - tactile push button "LIGHT" terminal 2 (NC) --> -5 V power source (GND)
-//   - NodeMCU "A0" --> water level sensor terminal 1 (optional, see ENABLE_WATER_REPOSITION configuration flag)
-//   - water level sensor terminal 2 --> NodeMCU (3.3V)  (optional, see ENABLE_WATER_REPOSITION configuration flag)
-//   - NodeMCU "A0" --> resistor 10k ohms "C" terminal 1 (optional, see ENABLE_WATER_REPOSITION configuration flag)
-//   - resistor 10k ohms "C" terminal 2 --> NodeMCU "GND" (optional, see ENABLE_WATER_REPOSITION configuration flag)
-//   - NodeMCU "D3" --> resistor 1k ohms terminal 1
-//   - resistor 1k ohms terminal 2 --> BC548 transistor base (pin 2 - leg at middle)
-//   - BC548 transistor collector (pin 1 - left leg) --> buzzer 5v negative terminal (-)
-//   - buzzer 5v positive terminal (+) --> +5 V power source (Vcc)
-//   - BC548 transistor emitter (pin 3 - right leg) --> -5 V power source (GND)
-//   - Led terminal 1 (positive) --> +5 V power source (VCC) (optional, "power on led")
-//   - Led terminal 2 (negative/bevel) --> resistor 10k ohms "D" terminal 1 (optional, "power on led")
-//   - resistor 10k ohms "D" terminal 2 --> -5 V power source (GND) (optional, "power on led")
-//   - capacitor 100uF (positive) --> +5 V power source (VCC) (optional)
-//   - capacitor 100uF (negative/"minus sign") --> resistor 10k ohms "D" terminal 2 (optional)
+//  - power supply connections:
+//    - NodeMCU (GND) -> power supply 5vdc (negative/Gnd)
+//    - NodeMCU (Vin) -> power supply 5vdc (positive/Vcc)  
+// - relay module (2-channels - sets "NUMBER_OF_RELAYS" as "1" for use a single relay module)):
+//    - Relay 2 ch (VCC) -> power supply 5vdc (negative/Gnd)
+//    - Relay 2 ch (GND) -> power supply 5vdc (positive/Vcc)
+//    - Relay 2 ch (In 1) [water pump] -> NodeMCU (D4)
+//    - Relay 2 ch (In 2) [extra outlet] -> NodeMCU (D5)  
+// - push buttons (optional - set "USE_PUSH_BUTTONS" as false to ignore):
+//    - NodeMCU "D1" -> resistor 1k ohms "A" terminal 1 
+//    - resistor 1k ohms "A" terminal 2 -> NodeMCU (3.3V)
+//    - NodeMCU "D2" -> resistor 1k ohms "B" terminal 1
+//    - resistor 1k ohms "B" terminal 2 -> NodeMCU (3.3V)
+//    - NodeMCU "D1" -> tactile push button "water pump on/off" terminal 1 (NC)
+//    - tactile push button "water pump on/off" terminal 2 (NC) -> -5 V power source (GND)
+//    - NodeMCU "D2" -> tactile push button "light on/off" terminal 1 (NC)
+//    - tactile push button "light on/off" terminal 2 (NC) -> -5 V power source (GND)
+// - leds (up to 20 leds):
+//    - NodeMCU "D3" -> resistor 1k ohms terminal 1
+//    - resistor 1k ohms terminal 2 -> BC548 transistor "A" base (pin 2 - leg at middle)
+//    - BC548 transistor "A" emitter (pin 3 - right leg) -> -5 V power source (GND)
+//    - BC548 transistor "A" collector (pin 1 - left leg) -> 480 ohms resistor "led" terminal 1 (connects 20 up to leds in parallel at this point)
+//    - 480 ohms resistor "led" terminal 1 -> Led terminal 2 (negative/bevel) (connects up to 20 leds in parallel)
+//    - Led terminal 1 (positive) -> +5 V power source (Vcc) (connects 20 up to leds in parallel at this point)    
+// - buzzer: (optional - set "PLAY_TUNES" as false to ignore)
+//    - NodeMCU "D6" -> resistor 1k ohms terminal 1
+//    - resistor 1k ohms terminal 2 -> BC548 transistor "B" base (pin 2 - leg at middle)
+//    - BC548 transistor "B" collector (pin 1 - left leg) -> buzzer 5v negative terminal (-)
+//    - buzzer 5v positive terminal (+) -> +5 V power source (Vcc)
+//    - BC548 transistor "B" emitter (pin 3 - right leg) -> -5 V power source (GND)
+// - power on indicator led (optional)
+//    - Led terminal 1 (positive) -> +5 V power source (VCC) (optional, "power on led")
+//    - Led terminal 2 (negative/bevel) -> resistor 10k ohms "D" terminal 1 (optional, "power on led")
+//    - resistor 10k ohms "D" terminal 2 -> -5 V power source (GND) (optional, "power on led")
+// - filter capacitor (optional)
+//    - capacitor 100uF (positive) -> +5 V power source (VCC) (optional)
+//    - capacitor 100uF (negative/"minus sign") -> resistor 10k ohms "D" terminal 2 (optional)
 //
 //   Snubber Filter:
 //
 //   The suppressor filter (aka "snubber"), is a device that serves to limit voltage spikes. On this project
-//   is recommend the snubber filter in parallel with the pumps (eletric motors) outlets.
+//   is recommend the snubber filter in parallel with the water pump (eletric motor) outlets.
 //
 //      ---------------[relay]----
 //      o         |               |
@@ -133,10 +150,12 @@
 //         "refresh": update MQTT state [debug only]
 //    - wellspring/state: retrieves NodeMCU states as json [bettaino -> home assistant]
 //         {
-//            "pump": "on",           // relay #1 state (water pump): [on/off]  
-//            "light": "on",          // relay #2 state (led lights): [on/off]
-//            "rssi": -68,            // wifi signal power 
-//            "ip": "192.168.0.58",   // ip address
+//            "light": "on",                // "buddha" led lights state (led lights): [on/off]
+//            "pump": "on",                 // relay #1 state (water pump): [on/off]
+//            "relay2": "on",               // relay #2 state (extra): [on/off]
+//            "rssi": -68,                  // wifi signal power 
+//            "ip": "192.168.0.58",         // ip address
+//            "mac": "E3:3A:21:34:FE:21",   // mac address
 //         } 
 //------------------------------------------------------------------------------------------------------------------
 //
@@ -144,13 +163,15 @@
 // https://www.jorgealbuquerque.com
 //
 #define DEBUG_MODE false                             // enables/disables serial debugging messages
-#define PLAY_TUNES true                              // enables play music
+#define PLAY_TUNES true                             // enables play music
+#define USE_PUSH_BUTTONS true                       // enables push buttons
+#define NUMBER_OF_RELAYS 2                          // nummber of relay channes: 1 or 2 (default: 2)
 //------------------------------------------------------------------------------------------------------------------
 //
 // Configuration flags (enables or disables features in order to "skip" unwanted hardware)
 //
 //------------------------------------------------------------------------------------------------------------------
-// Wi-fi setup
+Wi-fi setup
 #define WIFI_SSID "wifi-ssid"                         // Wi-fi SSID (required)
 #define WIFI_PASSWORD "wifi-password"                 // Wi-fi password (required)
 // MQTT setup
@@ -164,27 +185,30 @@
 #define MQTT_AVAILABILITY_TOPIC "wellspring/available"  // MQTT topic for availability notification (home assistant "unavailable" state)
 #define MQTT_DEVICE_ID "wellspring_12fmo43iowerwe2"     // MQTT session identifier
 // others
-#define MQTT_STATUS_UPDATE_TIME 300000                // maximum time to send the MQTT state update, in miliseconds (default: 5 min)
-#define MQTT_AVAILABILITY_TIME 60000                  // elapsed time to send MQTT availability, in miliseconds (default: 1 min)
-#define BUZZER_POWER_ON_TIME 800                      // default buzzen power on time, in miliseconds (beep)
-#define LOOP_TIME 200                                 // processor loop timer, in miliseconds
-#define SERIAL_BAUDRATE 9600                          // serial monitor baud rate (only for debuging)
+#define MQTT_STATUS_UPDATE_TIME 300000                  // maximum time to send the MQTT state update, in miliseconds (default: 5 min)
+#define MQTT_AVAILABILITY_TIME 60000                    // elapsed time to send MQTT availability, in miliseconds (default: 1 min)
+#define BUZZER_POWER_ON_TIME 800                        // default buzzen power on time, in miliseconds (beep)
+#define BUTTON_PRESSING_TIME 300                        // default buzzen power on time, in miliseconds (beep)
+#define SERIAL_BAUDRATE 9600                            // serial monitor baud rate (only for debuging)
+#define LOOP_TIME 200                                   // processor loop timer, in miliseconds
 //
 // pins definitions (ModeMCU)
 //
-// #define WATER_LOW_LEVEL_SENSOR_PIN A0                 // A0: water level sensor (should be located at desired aquarium level: open when water is low)
-#define PUSH_BUTTON_PUMP_PIN D1                    // D1: pull-up (high) - tactile push button "feed"
-#define PUSH_BUTTON_LIGHT_PIN D2                      // D2: pull-up (high) - tactile push button "lights"
-#define BUZZER_PIN D3                                 // D3: pull-up (high) (remark: boot fails on low) - buzzer
-#define RELAY_PUMP_PIN D4                           // D4: pull-up (high) - relay #1: feeder push button [connected to build-in LED]
-#define RELAY_LIGHT_PIN D5                            // D5: pull-up (high) - relay #2: light (normally open)
+#define PUSH_BUTTON_WATER_PUMP_PIN D1                   // D1: pull-up (high) - tactile push button "water pump"
+#define PUSH_BUTTON_BUDDHA_LIGHT_PIN D2                 // D2: pull-up (high) - tactile push button "buddha lights"
+#define RELAY_BUDDHA_LIGHT_PIN D3                       // D3: pull-up (high) (remark: boot fails on low) - "buddha" led lights (npn transistor)
+#define RELAY_WATER_PUMP_PIN D4                         // D4: pull-up (high) - relay #1: feeder push button [connected to build-in LED]
+#define RELAY_EXTRA_PIN D5                              // D5: pull-up (high) - relay #2: general purpose (normally open)
+#define BUZZER_PIN D6                                   // D6: pull-up (high) (remark: boot fails on low) - buzzer
 //
 // protocol commands
 //
-#define MQTT_COMMAND_PUMP_ON "water on"
-#define MQTT_COMMAND_PUMP_OFF "water off"
-#define MQTT_COMMAND_LIGHT_ON "light on"
-#define MQTT_COMMAND_LIGHT_OFF "light off"
+#define MQTT_COMMAND_BUDDHA_LIGHT_ON "light on"
+#define MQTT_COMMAND_BUDDHA_LIGHT_OFF "light off"
+#define MQTT_COMMAND_WATER_PUMP_ON "pump on"
+#define MQTT_COMMAND_WATER_PUMP_OFF "pump off"
+#define MQTT_COMMAND_RELAY2_ON "relay2 on"
+#define MQTT_COMMAND_RELAY2_OFF "relay2 off"
 #define MQTT_COMMAND_DEBUG_REFRESH "refresh"
 #define MQTT_COMMAND_DEBUG_BEEP "beep"
 #define MQTT_COMMAND_DEBUG_PLAY "play"
@@ -194,6 +218,8 @@
 #define MQTT_COMMAND_DEBUG_PLAY_MARIO "play mario"
 #define MQTT_COMMAND_DEBUG_PLAY_GOT "play got"
 #define MQTT_COMMAND_DEBUG_PLAY_GODFATHER "play gf"
+#define MQTT_COMMAND_DEBUG_PLAY_BRAHMS_LULLABY "play brahms"
+#define MQTT_COMMAND_DEBUG_PLAY_PACHELBEL_CANNON_IN_D "play cannon"
 
 
 //------------------------------------------------------------------------------------------------------------------
@@ -202,7 +228,7 @@
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
-#include <EEPROM.h>
+
 
 WiFiClient espClient;
 PubSubClient MQTT(espClient);
@@ -211,12 +237,15 @@ PubSubClient MQTT(espClient);
 //
 bool _lightOn = false;
 bool _pumpOn = false;
+bool _relay2On = false;
 unsigned long _lastAvailabilityTime = 0;
 unsigned long _lastStatusUpdateTime = 0;
+unsigned long _lastButtonPressTime = 0;
+
 
 #if (PLAY_TUNES == true)
   /* ----------------------------------------------------------------------
-    Songs available at https://github.com/robsoncouto/arduino-songs                                                                                          
+    Songs available at https://github.com/robsoncouto/arduino-songs
                                                 Robson Couto, 2019
     ----------------------------------------------------------------------*/
   #define NOTE_B0 31
@@ -403,6 +432,58 @@ unsigned long _lastStatusUpdateTime = 0;
     NOTE_A4, 2, 
   };
 
+  // Wiegenlied (Brahms' Lullaby)
+  int melody_brahms[] = {
+    NOTE_G4, 4, NOTE_G4, 4, //1
+    NOTE_AS4, -4, NOTE_G4, 8, NOTE_G4, 4,
+    NOTE_AS4, 4, REST, 4, NOTE_G4, 8, NOTE_AS4, 8,
+    NOTE_DS5, 4, NOTE_D5, -4, NOTE_C5, 8,
+    NOTE_C5, 4, NOTE_AS4, 4, NOTE_F4, 8, NOTE_G4, 8,
+    NOTE_GS4, 4, NOTE_F4, 4, NOTE_F4, 8, NOTE_G4, 8,
+    NOTE_GS4, 4, REST, 4, NOTE_F4, 8, NOTE_GS4, 8,
+    NOTE_D5, 8, NOTE_C5, 8, NOTE_AS4, 4, NOTE_D5, 4,
+
+    NOTE_DS5, 4, REST, 4, NOTE_DS4, 8, NOTE_DS4, 8, //8
+    NOTE_DS5, 2, NOTE_C5, 8, NOTE_GS4, 8,
+    NOTE_AS4, 2, NOTE_G4, 8, NOTE_DS4, 8,
+    NOTE_GS4, 4, NOTE_AS4, 4, NOTE_C5, 4,
+    NOTE_AS4, 2, NOTE_DS4, 8, NOTE_DS4, 8,
+    NOTE_DS5, 2, NOTE_C5, 8, NOTE_GS4, 8,
+    NOTE_AS4, 2, NOTE_G4, 8, NOTE_DS4, 8,
+    NOTE_AS4, 4, NOTE_G4, 4, NOTE_DS4, 4,
+    NOTE_DS4, 2
+  };
+
+  // Pachelbel's Canon
+  int melody_cannon_in_D[] = {
+    NOTE_FS4,2, NOTE_E4,2, NOTE_D4,2, NOTE_CS4,2,
+    NOTE_B3,2, NOTE_A3,2, NOTE_B3,2, NOTE_CS4,2,
+    NOTE_FS4,2, NOTE_E4,2, NOTE_D4,2, NOTE_CS4,2,
+    NOTE_B3,2, NOTE_A3,2, NOTE_B3,2, NOTE_CS4,2,
+    NOTE_D4,2, NOTE_CS4,2, NOTE_B3,2, NOTE_A3,2,
+    NOTE_G3,2, NOTE_FS3,2, NOTE_G3,2, NOTE_A3,2,
+
+    NOTE_D4,4, NOTE_FS4,8, NOTE_G4,8, NOTE_A4,4, NOTE_FS4,8, NOTE_G4,8, 
+    NOTE_A4,4, NOTE_B3,8, NOTE_CS4,8, NOTE_D4,8, NOTE_E4,8, NOTE_FS4,8, NOTE_G4,8, 
+    NOTE_FS4,4, NOTE_D4,8, NOTE_E4,8, NOTE_FS4,4, NOTE_FS3,8, NOTE_G3,8,
+    NOTE_A3,8, NOTE_G3,8, NOTE_FS3,8, NOTE_G3,8, NOTE_A3,2,
+    NOTE_G3,4, NOTE_B3,8, NOTE_A3,8, NOTE_G3,4, NOTE_FS3,8, NOTE_E3,8, 
+    NOTE_FS3,4, NOTE_D3,8, NOTE_E3,8, NOTE_FS3,8, NOTE_G3,8, NOTE_A3,8, NOTE_B3,8,
+
+    NOTE_G3,4, NOTE_B3,8, NOTE_A3,8, NOTE_B3,4, NOTE_CS4,8, NOTE_D4,8,
+    NOTE_A3,8, NOTE_B3,8, NOTE_CS4,8, NOTE_D4,8, NOTE_E4,8, NOTE_FS4,8, NOTE_G4,8, NOTE_A4,2,
+    NOTE_A4,4, NOTE_FS4,8, NOTE_G4,8, NOTE_A4,4,
+    NOTE_FS4,8, NOTE_G4,8, NOTE_A4,8, NOTE_A3,8, NOTE_B3,8, NOTE_CS4,8,
+    NOTE_D4,8, NOTE_E4,8, NOTE_FS4,8, NOTE_G4,8, NOTE_FS4,4, NOTE_D4,8, NOTE_E4,8,
+    NOTE_FS4,8, NOTE_CS4,8, NOTE_A3,8, NOTE_A3,8,
+
+    NOTE_CS4,4, NOTE_B3,4, NOTE_D4,8, NOTE_CS4,8, NOTE_B3,4,
+    NOTE_A3,8, NOTE_G3,8, NOTE_A3,4, NOTE_D3,8, NOTE_E3,8, NOTE_FS3,8, NOTE_G3,8,
+    NOTE_A3,8, NOTE_B3,4, NOTE_G3,4, NOTE_B3,8, NOTE_A3,8, NOTE_B3,4,
+    NOTE_CS4,8, NOTE_D4,8, NOTE_A3,8, NOTE_B3,8, NOTE_CS4,8, NOTE_D4,8, NOTE_E4,8,
+    NOTE_FS4,8, NOTE_G4,8, NOTE_A4,2  
+  };
+
   // available melodies
   int *pmelodies[]=
   {
@@ -411,7 +492,9 @@ unsigned long _lastStatusUpdateTime = 0;
     melody_tetris,
     melody_mario,
     melody_game_of_thrones,
-    melody_godfather
+    melody_godfather,
+    melody_brahms,
+    melody_cannon_in_D
   };
 
   // change this to make the song slower or faster
@@ -422,7 +505,9 @@ unsigned long _lastStatusUpdateTime = 0;
     144, 
     200,
     85,
-    80
+    80,
+    76,
+    100
   };
 
   int notes[] = 
@@ -432,7 +517,9 @@ unsigned long _lastStatusUpdateTime = 0;
     sizeof(melody_tetris) / sizeof(melody_tetris[0]) / 2,
     sizeof(melody_mario) / sizeof(melody_mario[0]) / 2,
     sizeof(melody_game_of_thrones) / sizeof(melody_game_of_thrones[0]) / 2,
-    sizeof(melody_godfather) / sizeof(melody_godfather[0]) / 2
+    sizeof(melody_godfather) / sizeof(melody_godfather[0]) / 2,
+    sizeof(melody_brahms) / sizeof(melody_brahms[0]) / 2,
+    sizeof(melody_cannon_in_D) / sizeof(melody_cannon_in_D[0]) / 2    
   };
 
 #endif
@@ -448,20 +535,22 @@ void connectWiFi();
 void connectMQTT();
 void onMessage(char* topic, byte* payload, unsigned int length);
 void updateStates();
-ICACHE_RAM_ATTR void onPumpPushButton();
-ICACHE_RAM_ATTR void onLightPushButton();
+#if (USE_PUSH_BUTTONS == true)
+  ICACHE_RAM_ATTR void onPumpPushButton();
+  ICACHE_RAM_ATTR void onLightPushButton();
+#endif
 void playTune(unsigned int song);
 void setRelay(const unsigned int& relayPin, bool state);
 void beep(const uint8_t& n, const unsigned long& time);
 String getMacAddress();
 String toStr(const bool& value);
 
+
 //--------------------------------------------------------------------------------------------------
 //
 // main code
 //
 //--------------------------------------------------------------------------------------------------
-
 
 void setup() {
   //
@@ -473,23 +562,33 @@ void setup() {
     Serial.println(F("-- Debug Mode --"));
   #endif
 
+  // digital ouputs
+  pinMode(RELAY_BUDDHA_LIGHT_PIN, OUTPUT);
+  digitalWrite(RELAY_BUDDHA_LIGHT_PIN, LOW);
   // relays
-  pinMode(RELAY_PUMP_PIN, OUTPUT);
-  pinMode(RELAY_LIGHT_PIN, OUTPUT);
-  digitalWrite(RELAY_PUMP_PIN, HIGH);
-  digitalWrite(RELAY_LIGHT_PIN, HIGH);
+  #if (NUMBER_OF_RELAYS > 0)
+    pinMode(RELAY_WATER_PUMP_PIN, OUTPUT);  
+    digitalWrite(RELAY_WATER_PUMP_PIN, HIGH);
+  #endif
+  #if (NUMBER_OF_RELAYS > 1)
+    pinMode(RELAY_EXTRA_PIN, OUTPUT);
+    digitalWrite(RELAY_EXTRA_PIN, HIGH);
+  #endif
   
   // buzzer
   pinMode(BUZZER_PIN, OUTPUT);
   
-  // push buttons
-  pinMode(PUSH_BUTTON_PUMP_PIN, INPUT_PULLUP);
-  pinMode(PUSH_BUTTON_LIGHT_PIN, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(PUSH_BUTTON_PUMP_PIN), onPumpPushButton, FALLING);
-  attachInterrupt(digitalPinToInterrupt(PUSH_BUTTON_LIGHT_PIN), onLightPushButton, FALLING);
-  
+  #if (USE_PUSH_BUTTONS == true)
+    // push buttons
+    pinMode(PUSH_BUTTON_BUDDHA_LIGHT_PIN, INPUT_PULLUP);    
+    attachInterrupt(digitalPinToInterrupt(PUSH_BUTTON_BUDDHA_LIGHT_PIN), onLightPushButton, FALLING);
+
+    pinMode(PUSH_BUTTON_WATER_PUMP_PIN, INPUT_PULLUP);    
+    attachInterrupt(digitalPinToInterrupt(PUSH_BUTTON_WATER_PUMP_PIN), onPumpPushButton, FALLING);
+  #endif
+
   // starting beep
-  beep(1, 100);
+  beep(3, 100);
 
   // wifi connect
   #if (DEBUG_MODE == true)
@@ -504,13 +603,15 @@ void setup() {
   // MQTT broker setup
   MQTT.setServer(MQTT_BROKER_ADDRESS, MQTT_BROKER_PORT);
   MQTT.setCallback(onMessage);
-  delay(250);
+  delay(150);
   updateStates();
+  delay(50);
 
-  setRelay(RELAY_PUMP_PIN, true);
-
-  #if (DEBUG_MODE == true)
-    Serial.println(F("Setup finished"));  
+  // default: water pump on
+  #if (DEBUG_MODE == false)
+    setRelay(RELAY_WATER_PUMP_PIN, true);
+  #else
+    Serial.println(F("Setup finished"));    
   #endif
 }
 
@@ -533,14 +634,14 @@ void loop() {
     updateStates();    
   }
 
+  // wait some
+  delay(LOOP_TIME);
+
   // MQTT loop
   MQTT.loop();
   
   // keeps wifi connected
-  connectWiFi();
-
-  // wait some
-  delay(LOOP_TIME);
+  connectWiFi();  
 }
 
 
@@ -551,23 +652,33 @@ void loop() {
 //
 //--------------------------------------------------------------------------------------------------
 
-void onPumpPushButton() {
-  //
-  // pump button handler: invertd pump state (on/off)
-  //  
-  setRelay(RELAY_PUMP_PIN, !_pumpOn);
-}
+#if (USE_PUSH_BUTTONS == true)
 
+  void onLightPushButton() {
+    //
+    // "buddha" lightening button handler: invertd light state (on/off)
+    //  
+    //setRelay(RELAY_BUDDHA_LIGHT_PIN, !_lightOn);
+    if ((millis() - _lastButtonPressTime) > BUTTON_PRESSING_TIME) {
+      _lightOn = !_lightOn;
+      digitalWrite(RELAY_BUDDHA_LIGHT_PIN, (_lightOn ? HIGH : LOW));      
+      _lastButtonPressTime = millis();      
+    }
+  }
 
-void onLightPushButton() {
-  //
-  // lightening button handler: invertd light state (on/off)
-  //
-  
-  setRelay(RELAY_LIGHT_PIN, !_lightOn);
-}
+  void onPumpPushButton() {
+    //
+    // water pump button handler: invertd pump state (on/off)
+    //  
+    //setRelay(RELAY_WATER_PUMP_PIN, !_pumpOn);
+    if ((millis() - _lastButtonPressTime) > BUTTON_PRESSING_TIME) {
+      _pumpOn = !_pumpOn;
+      digitalWrite(RELAY_WATER_PUMP_PIN, (_pumpOn ? LOW : HIGH));
+      _lastButtonPressTime = millis();      
+    }
+  }
 
-
+#endif
 //--------------------------------------------------------------------------------------------------
 //
 // MQTT
@@ -587,24 +698,32 @@ void onMessage(char* topic, byte* payload, unsigned int length) {
     Serial.println(F("]"));
   #endif
 
+  //
   // decode Home Assistant command (MQTT)
-  if (strcmp(msg, MQTT_COMMAND_PUMP_ON) == 0) {
+  //
+  if (strcmp(msg, MQTT_COMMAND_BUDDHA_LIGHT_ON) == 0) {
+    // turns on the "buddha" led lights
+    setRelay(RELAY_BUDDHA_LIGHT_PIN, true);
+
+  } else if (strcmp(msg, MQTT_COMMAND_BUDDHA_LIGHT_OFF) == 0) {
+    // turns off the "buddha" led lights
+    setRelay(RELAY_BUDDHA_LIGHT_PIN, false);
+
+  } else if (strcmp(msg, MQTT_COMMAND_WATER_PUMP_ON) == 0) {
     // turn on the water pump (relay #1)
-    setRelay(RELAY_PUMP_PIN, true);
+    setRelay(RELAY_WATER_PUMP_PIN, true);
 
-  } else if (strcmp(msg, MQTT_COMMAND_PUMP_OFF) == 0) {
+  } else if (strcmp(msg, MQTT_COMMAND_WATER_PUMP_OFF) == 0) {
     // turn off the water pump (relay #1)
-    setRelay(RELAY_PUMP_PIN, false);    
+    setRelay(RELAY_WATER_PUMP_PIN, false);    
 
-  } else if (strcmp(msg, MQTT_COMMAND_LIGHT_ON) == 0) {
+  } else if (strcmp(msg, MQTT_COMMAND_RELAY2_ON) == 0) {
     // turn on the led lights (relay #2)
-    setRelay(RELAY_LIGHT_PIN, true);
-    updateStates();
+    setRelay(RELAY_EXTRA_PIN, true);
 
-  } else if (strcmp(msg, MQTT_COMMAND_LIGHT_OFF) == 0) {
+  } else if (strcmp(msg, MQTT_COMMAND_RELAY2_OFF) == 0) {
     // turn off the led lights (relay #2)
-    setRelay(RELAY_LIGHT_PIN, false);
-    updateStates();
+    setRelay(RELAY_EXTRA_PIN, false);
 
   } else if (strcmp(msg, MQTT_COMMAND_DEBUG_BEEP) == 0) {
     // plays a "beep" sound
@@ -612,7 +731,7 @@ void onMessage(char* topic, byte* payload, unsigned int length) {
   
   } else if (strcmp(msg, MQTT_COMMAND_DEBUG_PLAY) == 0) {
     // plays random tune
-    int song = random(0, 5);
+    int song = random(0, 7);
     playTune(song);
 
   } else if (strcmp(msg, MQTT_COMMAND_DEBUG_PLAY_STAR_WARS) == 0) {
@@ -639,6 +758,14 @@ void onMessage(char* topic, byte* payload, unsigned int length) {
     // plays the super mario bros theme
     playTune(5);    
 
+  } else if (strcmp(msg, MQTT_COMMAND_DEBUG_PLAY_BRAHMS_LULLABY) == 0) {
+    // plays the super mario bros theme
+    playTune(6);    
+
+  } else if (strcmp(msg, MQTT_COMMAND_DEBUG_PLAY_PACHELBEL_CANNON_IN_D) == 0) {
+    // plays the super mario bros theme
+    playTune(7);    
+
   } else if (strcmp(msg, MQTT_COMMAND_DEBUG_REFRESH) == 0) {
     // updated mqtt states (debug)
     updateStates();
@@ -653,8 +780,9 @@ void updateStates() {
   if (MQTT.connected()) {    
 
     StaticJsonDocument<300> json;
-    json["pump"] = toStr(_pumpOn);
     json["light"] = toStr(_lightOn);
+    json["pump"] = toStr(_pumpOn);
+    json["relay2"] = toStr(_relay2On);
     json["rssi"] = WiFi.RSSI();
     json["ip"] = WiFi.localIP().toString();
     json["mac"] = getMacAddress();
@@ -755,22 +883,46 @@ void setRelay(const unsigned int& relayPin, bool state) {
   // handles relays with special behaviour
   switch (relayPin) {
     //
-    // water pump relay
+    // "buddha" lights relay
     //
-    case RELAY_PUMP_PIN:      
+    case RELAY_BUDDHA_LIGHT_PIN:      
+      if (_lightOn == state)        
+        return;        
+      _lightOn = state;
+      #if (DEBUG_MODE == true)
+        Serial.print(F("light: "));
+        Serial.println(toStr(state));
+      #endif
+      // led light is not a relay: 
+      // it's activates a npn transistor
+      // therefore, it has a inverted logic
+      state = !state;
+      break;    
+    //
+    // water pump relay (relay #1)
+    //
+    case RELAY_WATER_PUMP_PIN:      
       if (_pumpOn == state)        
         return;
       // set state
       _pumpOn = state;
+      #if (DEBUG_MODE == true)
+        Serial.print(F("relay pump: "));
+        Serial.println(toStr(state));
+      #endif
       break;
     //
-    // lights relay
+    // relay #2
     //
-    case RELAY_LIGHT_PIN:      
-      if (_lightOn == state)        
+    case RELAY_EXTRA_PIN:      
+      if (_relay2On == state)        
         return;        
-      _lightOn = state;
-      break;    
+      _relay2On = state;
+      #if (DEBUG_MODE == true)
+        Serial.print(F("relay #2: "));
+        Serial.println(toStr(state));
+      #endif
+      break;
   }
 
   // relays are active LOW
@@ -813,7 +965,6 @@ void playTune(unsigned int song = 0) {
     //
     // plays some music!
     //  
-    
     // sizeof gives the number of bytes, each int value is composed of two bytes (16 bits)
     // there are two values per note (pitch and duration), so for each note there are four bytes
 
@@ -864,5 +1015,8 @@ String getMacAddress() {
 }
 
 String toStr(const bool& value) {
+  //
+  // Encodes a boolean value as "on"/"off" string
+  //
   return String(value? F("on") : F("off"));
 }

@@ -200,10 +200,10 @@
 // Jorge Albuquerque (2024) - https://linkedin.com/in/jorgealbuquerque
 // https://www.jorgealbuquerque.com
 //
-#define DEBUG_MODE false                            // enables/disables serial debugging messages
-#define WIRING_TEST_MODE false                      // enables/disables testing mode
-#define ENABLE_WATER_REPOSITION true                // true for enable water reposition (reposition pump), false otherwise
-#define PLAY_TUNES true                              // enables play music
+#define DEBUG_MODE false                              // enables/disables serial debugging messages
+#define WIRING_TEST_MODE false                        // enables/disables testing mode
+#define ENABLE_WATER_REPOSITION true                  // true for enable water reposition (reposition pump), false otherwise
+#define PLAY_TUNES true                               // enables play music
 //------------------------------------------------------------------------------------------------------------------
 //
 // Configuration flags (enables or disables features in order to "skip" unwanted hardware)
@@ -218,10 +218,10 @@
 #define MQTT_USERNAME "mqtt-user"                     // MQTT broker username (required)
 #define MQTT_PASSWORD "mqtt-password"                 // MQTT broker password (required) 
 // MQTT topics
-#define MQTT_COMMAND_TOPIC "bettaino2/cmd"             // MQTT topic for send door commands (e.g., open from door)
-#define MQTT_STATUS_TOPIC "bettaino2/status"           // MQTT topic for doorbell status
-#define MQTT_AVAILABILITY_TOPIC "bettaino2/available"  // MQTT topic for availability notification (home assistant "unavailable" state)
-#define MQTT_DEVICE_ID "bettaino2_12fmo43iowerwe2"     // MQTT session identifier
+#define MQTT_COMMAND_TOPIC "bettaino/cmd"             // MQTT topic for send door commands (e.g., open from door)
+#define MQTT_STATUS_TOPIC "bettaino/status"           // MQTT topic for doorbell status
+#define MQTT_AVAILABILITY_TOPIC "bettaino/available"  // MQTT topic for availability notification (home assistant "unavailable" state)
+#define MQTT_DEVICE_ID "bettaino_12fmo43iowerwe2"     // MQTT session identifier
 // others
 #define KEEP_SILENCE_TIME true                        // true to not play sounds at dawn, false otherwise
 #define SILENCE_HOUR_START 20                         // silence time starting hour
@@ -285,6 +285,7 @@
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #if (KEEP_SILENCE_TIME == true)
+  // requires time server to check silence times
   #include <NTPClient.h>
   #include <WiFiUdp.h>
 #endif
@@ -295,23 +296,25 @@ WiFiClient espClient;
 PubSubClient MQTT(espClient);
 
 #if (KEEP_SILENCE_TIME == true)
+  // requires time server to check silence times
   WiFiUDP ntpUDP;
   NTPClient timeClient(ntpUDP, "pool.ntp.org");
 #endif
 //
 // internal states (globals)
 //
-bool _lightOn = false;
-bool _sumpOn = false;
-bool _repoOn = false;
-bool _sensorEnabled = true;
-bool _sumpEnabled = true;
-bool _repoEnabled = true;
-bool _lowWaterLevel = false;
-bool _alarmEnabled = true;
-byte _state = 0x00; 
+bool _lightOn = false;         // fish tank light is on
+bool _sumpOn = false;          // fish tank sump pump is on
+bool _repoOn = false;          // water reposition pump is turned on
+bool _lowWaterLevel = false;   // low water level is detected
+bool _sensorEnabled = true;    // water level sensor is enabled
+bool _sumpEnabled = true;      // sump pump is enabled
+bool _repoEnabled = true;      // water reposition pump is enabled
+bool _alarmEnabled = true;     // alarm is enabled
+byte _state = 0x00;            // current water level sensor state
 
-unsigned int _counter;
+unsigned int _counter = 0;
+unsigned int _currentHour = 12;
 unsigned long _lastAvailabilityTime = 0;
 unsigned long _lastStatusUpdateTime = 0;
 unsigned long _lastLowWaterLevelWarningTime = 0;
@@ -572,8 +575,9 @@ void loadConfig();
 void saveConfig();
 void beep(const uint8_t& n, const unsigned long& time);
 void setState(const byte& state);
-const bool isSilent();
 void wiringTest();
+const int getCurrentHour();
+const bool isSilent();
 String getMacAddress();
 String toStr(const bool& value);
 
@@ -632,11 +636,11 @@ void setup() {
     delay(250);
     updateStates();
   #endif
-
-  setRelay(RELAY_SUMP_PUMP_PIN, true);
-
+  
   #if (DEBUG_MODE == true)
     Serial.println(F("Setup finished"));  
+  #else
+    setRelay(RELAY_SUMP_PUMP_PIN, true);
   #endif
 }
 
@@ -1392,19 +1396,34 @@ void wiringTest() {
 
 //--------------------------------------------------------------------------------------------------
 
+
+const int getCurrentHour() {
+  //
+  // Gets current hour of the day
+  //  
+  #if (KEEP_SILENCE_TIME == true)
+    if (WiFi.status() == WL_CONNECTED) {
+      timeClient.update();  
+      _currentHour = timeClient.getHours();
+    }    
+  #endif
+  return _currentHour;
+}
+
+
 const bool isSilent() {
   //
-  // Returns true if "silent mode", i.e. plays no sound at down
+  // Returns true if "silent mode" is on 
+  // (plays no sound at down!)
   //
   #if (KEEP_SILENCE_TIME == true)
-    // gets current hour from NTP server
-    timeClient.update();  
-    int hour = timeClient.getHours();
+    const int hour = getCurrentHour();
     return hour > SILENCE_HOUR_START || hour < SILENCE_HOUR_END;  
   #else
     return false;
   #endif
 }
+
 
 String getMacAddress() {
   //
@@ -1413,11 +1432,17 @@ String getMacAddress() {
   byte mac[6];
   WiFi.macAddress(mac);
   
-  return String(mac[5], HEX) + String(":") + String(mac[4], HEX) + String(":") + String(mac[3], HEX) + 
-    String(":") + String(mac[2], HEX) + String(":") + String(mac[1], HEX) + String(":") + String(mac[0], HEX);
+  String address = String(mac[5], HEX);
+  for (int i = 4; i > 0; i--) 
+    address += String(":") + String(mac[i], HEX);
+  
+  return address;  
 }
 
 
 String toStr(const bool& value) {
+  //
+  // Returns a boolean value as string "on" / "off"
+  //
   return String(value? F("on") : F("off"));
 }
