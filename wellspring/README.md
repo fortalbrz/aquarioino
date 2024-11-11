@@ -40,7 +40,7 @@ This project should communicate with a MQTT broker (e.g., *mosquitto broker*), i
  - 2x resistor 1k ohms (1/8w) 
  - 1x power supply 5vdc (1A) - [[14 BRL](https://produto.mercadolivre.com.br/MLB-3445635491-fonte-alimentaco-5v-1a-bivolt-roteador-wireles-modem-d-link-_JM)]
  - 20x led and resistor 480 ohms (optional, lights)
- - 1x switch on/off
+ - 1x on/off switch 
  - 1x electrolytic capacitor 100 uF (optional)
  - 1x Small buddha statue
  - 1x Aquarium Pump (3w, 200L/h)

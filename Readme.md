@@ -1,11 +1,10 @@
 
 
-# Aquario.ino 
+# Aquarium.ino 
 
 ## Arduino Aquarium Automation (with Home Assistant) 
 
-**(with Arduino Mega 2560 Pro Mini)**
-
+**(with Arduino Mega 2560 Pro Mini and NodeMCU ESP-32)**
 
   - Making off video: version 2.0 ([version 1.0](https://youtu.be/3CjU-o5LTEI))
   - Overview video: version 2.0 ([version 1.0](https://youtu.be/8RszBkeuUlk))
@@ -15,6 +14,12 @@
 
 
 **source code**: https://github.com/fortalbrz/aquarioino ([backlog](https://github.com/users/fortalbrz/projects/1))
+
+### Related Projects:
+
+  - [Betta.ino](https://github.com/fortalbrz/aquarioino/tree/main/bettaino): light version of *aquarium.ino* (uses only a NodeMCU and a 4-channels relay module)
+  - [Wellspring.ino](https://github.com/fortalbrz/aquarioino/tree/main/wellspring): small "Buddha" water fountain (with a aquarium water pump and led lights)
+
 
 ### Change log
 
