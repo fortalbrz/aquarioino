@@ -3,10 +3,14 @@
 
 **Optimized for NodeMCU 1.0 (ESP-12E Module)** 
 
+This project is a small "zen" water fountain (with an buddha statue) controlled by the Internet, using a single NodeMCU.
+
+![logo](https://github.com/fortalbrz/aquarioino/blob/main/wellspring/img/image.png?raw=true)
+
 
 [Home Assistant](https://home-assistant.io) is free and open-source software used for home automation. It serves as an integration platform and smart home hub, allowing users to control smart home devices. This project objective is to control and integrate a small "Buddha" water fountain with Home Assistant using the [MQTT]((https://www.home-assistant.io/integrations/mqtt/)) protocol. The MQTT (aka MQ Telemetry Transport) is a machine-to-machine or "*Internet of Things*" connectivity protocol on top of TCP/IP. It allows extremely lightweight publish/subscribe messaging transport.
 
- - **Video**: **[YouTube](https://youtu.be/uQc_9umpfpI)** [pt]
+ - **Video**: **[YouTube](https://youtu.be/lmJE7mUcy5U)** [pt]
 
 
 
@@ -51,6 +55,7 @@ This project should communicate with a MQTT broker (e.g., *mosquitto broker*), i
  - "Durepox" epoxy resin (100g)
  - Silicone Glue (50g)
  
+![materials](https://github.com/fortalbrz/aquarioino/blob/main/wellspring/img/stuff.jpg?raw=true)
 
  
 
@@ -97,6 +102,11 @@ This project should communicate with a MQTT broker (e.g., *mosquitto broker*), i
     - capacitor 100uF (negative/"minus sign") -> resistor 10k ohms "D" terminal 2 (optional)
 
 
+![circuit](https://github.com/fortalbrz/aquarioino/blob/main/wellspring/img/circuit.jpg?raw=true)
+
+
+![pots](https://github.com/fortalbrz/aquarioino/blob/main/wellspring/img/pots_001.jpg?raw=true)
+![pots](https://github.com/fortalbrz/aquarioino/blob/main/wellspring/img/pots_002.jpg?raw=true)
 
 ## Source code:
  - **https://github.com/fortalbrz/aquarioino/tree/main/wellspring**
@@ -158,7 +168,7 @@ And creates a file "*[mqtt.yaml](https://github.com/fortalbrz/aquarioino/blob/ma
         qos: 0
         retain: true
         device_class: "outlet"
-        icon: mdi:pump
+        icon: mdi:fountain
       - switch:
         #
         # buddha fountain (main bedroom) - enables led lights: on/off
@@ -206,7 +216,7 @@ And creates a file "*[mqtt.yaml](https://github.com/fortalbrz/aquarioino/blob/ma
         qos: 0
         retain: true
         device_class: "outlet"
-        icon: mdi:light-switch
+        icon: mdi:power-plug
       
 
 
@@ -253,6 +263,84 @@ And creates a file "*[mqtt.yaml](https://github.com/fortalbrz/aquarioino/blob/ma
 | USE_PUSH_BUTTONS           | true    | enables play tactile push buttons (disables to not assembly the push buttons)                 |
 | NUMBER_OF_RELAYS           | 2       | 1 for single relay module, 2 for 2-channels relay module                                      |
 | DEBUG_MODE                 | false   | true to debug on serial monitor (debug), false otherwise                                      |
+
+
+### Sample Home Assistant Automation
+
+
+    alias: Manages Buddha water fountain
+    description: "Turn on/off Buddha water fountain at dawn/dusk"
+    triggers:
+      - trigger: state
+        entity_id:
+          - binary_sensor.night
+        to: "on"
+        id: dawn
+        alias: dawn
+      - trigger: state
+        entity_id:
+          - binary_sensor.night
+        to: "off"
+        id: dusk
+        alias: dusk
+      - trigger: time
+        at: "23:00:00"
+        id: bedtime
+        alias: bedtime
+    conditions: []
+    actions:
+      - choose:
+          - conditions:
+              - condition: trigger
+                id:
+                  - dusk
+            sequence:
+              - action: switch.turn_on
+                metadata: {}
+                data: {}
+                target:
+                  entity_id:
+                    - switch.buddha_wellspring_pump
+                    - switch.buddha_wellspring_light
+                alias: Turn on fountain
+            alias: dusk
+          - conditions:
+              - condition: trigger
+                id:
+                  - bedtime
+            sequence:
+              - alias: Turn on water pump
+                action: switch.turn_on
+                metadata: {}
+                data: {}
+                target:
+                  entity_id:
+                    - switch.buddha_wellspring_pump
+              - alias: Turn off light
+                action: switch.turn_off
+                metadata: {}
+                data: {}
+                target:
+                  entity_id:
+                    - switch.buddha_wellspring_light
+            alias: bedtime
+          - conditions:
+              - condition: trigger
+                id:
+                  - dawn
+            sequence:
+              - action: switch.turn_off
+                metadata: {}
+                data: {}
+                target:
+                  entity_id:
+                    - switch.buddha_wellspring_pump
+                    - switch.buddha_wellspring_light
+                alias: Turn off fountain
+            alias: dawn
+    mode: single
+
+
 
 <hr>
 

@@ -23,7 +23,7 @@
   qos: 0
   retain: true
   device_class: "outlet"
-  icon: mdi:pump
+  icon: mdi:fountain
 
 - switch:
   #
@@ -73,4 +73,4 @@
   qos: 0
   retain: true
   device_class: "outlet"
-  icon: mdi:light-switch
+  icon: mdi:power-plug
